@@ -156,7 +156,7 @@ public class TutorDAO {
             stmt.setString(9, tutor.getTeachingMode());
             stmt.setString(10, tutor.getSubjectDesc());
             stmt.setString(11, tutor.getStatus());
-            stmt.setInt(12, tutor.getId()); // වැදගත්ම දේ: කාගේ ඩේටාද මාරු කරන්නේ කියලා කියන ID එක
+            stmt.setInt(12, tutor.getId()); 
 
             int rowsUpdated = stmt.executeUpdate();
             return rowsUpdated > 0;
