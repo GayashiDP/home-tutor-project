@@ -30,7 +30,7 @@
 
                         <div class="form-card">
                             <!-- Connects into AddTutorServlet via POST -->
-                            <form action="addTutor" method="post">
+                            <form action="addTutor" method="post" enctype="multipart/form-data">
 
                                 <!-- Tutor Info -->
                                 <div class="section-divider">👤 Tutor Information</div>
@@ -63,6 +63,10 @@
                                     <textarea class="form-control" name="bio"
                                         placeholder="Brief description about the tutor's background and teaching style…"></textarea>
                                     <div class="form-hint">Max 300 characters</div>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label">Profile Image</label>
+                                    <input type="file" class="form-control" name="image" accept="image/*" />
                                 </div>
 
                                 <!-- Subject Info -->

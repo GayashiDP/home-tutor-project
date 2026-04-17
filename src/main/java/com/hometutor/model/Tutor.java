@@ -17,6 +17,7 @@ public class Tutor {
     private String teachingMode;
     private String subjectDesc;
     private String status;
+    private String imagePath;
 
     // Default Constructor (needed so we can create an empty object first)
     public Tutor() {
@@ -25,7 +26,7 @@ public class Tutor {
     // Constructor with all parameters so we can quickly set all details at once
     public Tutor(int id, String firstName, String lastName, String email, String phone, String bio,
             String category, double rate, String teachingLevel, String teachingMode,
-            String subjectDesc, String status) {
+            String subjectDesc, String status, String imagePath) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -38,6 +39,7 @@ public class Tutor {
         this.teachingMode = teachingMode;
         this.subjectDesc = subjectDesc;
         this.status = status;
+        this.imagePath = imagePath;
     }
 
     // Getters and Setters (Encapsulation)
@@ -141,5 +143,13 @@ public class Tutor {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 }

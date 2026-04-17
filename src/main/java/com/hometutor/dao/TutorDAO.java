@@ -22,9 +22,9 @@ public class TutorDAO {
      * @return true if successful, false otherwise.
      */
     public boolean addTutor(Tutor tutor) {
-        String sql = "INSERT INTO tutors (first_name, last_name, email, phone, bio, category, rate, teaching_level, teaching_mode, subject_desc, status) "
+        String sql = "INSERT INTO tutors (first_name, last_name, email, phone, bio, category, rate, teaching_level, teaching_mode, subject_desc, status, image_path) "
                 +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -39,6 +39,7 @@ public class TutorDAO {
             stmt.setString(9, tutor.getTeachingMode());
             stmt.setString(10, tutor.getSubjectDesc());
             stmt.setString(11, tutor.getStatus());
+            stmt.setString(12, tutor.getImagePath());
 
             int rowsAdded = stmt.executeUpdate();
             return rowsAdded > 0;
@@ -120,7 +121,7 @@ public class TutorDAO {
      */
     public boolean updateTutor(Tutor tutor) {
         String sql = "UPDATE tutors SET first_name=?, last_name=?, email=?, phone=?, bio=?, " +
-                "category=?, rate=?, teaching_level=?, teaching_mode=?, subject_desc=?, status=? " +
+                "category=?, rate=?, teaching_level=?, teaching_mode=?, subject_desc=?, status=?, image_path=? " +
                 "WHERE id=?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -137,7 +138,8 @@ public class TutorDAO {
             stmt.setString(9, tutor.getTeachingMode());
             stmt.setString(10, tutor.getSubjectDesc());
             stmt.setString(11, tutor.getStatus());
-            stmt.setInt(12, tutor.getId());
+            stmt.setString(12, tutor.getImagePath());
+            stmt.setInt(13, tutor.getId());
 
             int rowsChanged = stmt.executeUpdate();
             return rowsChanged > 0;
@@ -169,6 +171,7 @@ public class TutorDAO {
                 rs.getString("teaching_level"),
                 rs.getString("teaching_mode"),
                 rs.getString("subject_desc"),
-                rs.getString("status"));
+                rs.getString("status"),
+                rs.getString("image_path"));
     }
 }

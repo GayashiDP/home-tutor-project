@@ -79,7 +79,16 @@
                                     <div class="t-card">
                                         <div class="card-body">
                                             <div class="d-flex gap-3 align-items-start mb-3">
-                                                <div class="tutor-avatar">👨‍🏫</div>
+                                                <c:choose>
+                                                    <c:when test="${not empty tutor.imagePath}">
+                                                        <img src="${pageContext.request.contextPath}/${tutor.imagePath}"
+                                                            alt="Avatar" class="tutor-avatar"
+                                                            style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: none; padding: 0; background: transparent;" />
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <div class="tutor-avatar">👨‍🏫</div>
+                                                    </c:otherwise>
+                                                </c:choose>
                                                 <div>
                                                     <div class="t-name">${tutor.firstName} ${tutor.lastName}</div>
                                                     <div class="t-sub">${tutor.category}</div>

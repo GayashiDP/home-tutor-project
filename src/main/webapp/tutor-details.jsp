@@ -30,7 +30,15 @@
           <div class="col-lg-4">
             <div class="detail-card mb-4">
               <div class="detail-header text-center">
-                <div style="font-size:3.5rem;margin-bottom:12px;">👩‍🏫</div>
+                <c:choose>
+                  <c:when test="${not empty tutor.imagePath}">
+                    <img src="${pageContext.request.contextPath}/${tutor.imagePath}" alt="${tutor.firstName}'s Image"
+                      style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 12px;" />
+                  </c:when>
+                  <c:otherwise>
+                    <div style="font-size:3.5rem;margin-bottom:12px;">👩‍🏫</div>
+                  </c:otherwise>
+                </c:choose>
                 <h4 class="fw-bold mb-1">${tutor.firstName} ${tutor.lastName}</h4>
                 <div class="stars mb-1">★★★★★</div>
                 <div style="opacity:.85;font-size:.9rem;">${tutor.category}</div>
@@ -126,7 +134,7 @@
     <div class="modal fade" id="editModal" tabindex="-1">
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-          <form action="updateTutor" method="post">
+          <form action="updateTutor" method="post" enctype="multipart/form-data">
             <input type="hidden" name="id" value="${tutor.id}" />
             <div class="modal-header">
               <h5 class="modal-title fw-bold">✏️ Edit Listing</h5>
@@ -185,6 +193,10 @@
                 <div class="col-12">
                   <label class="form-label fw-500 small">Bio</label>
                   <textarea class="form-control" name="bio" rows="3" required>${tutor.bio}</textarea>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-500 small">Update Image (Optional)</label>
+                  <input type="file" class="form-control" name="image" accept="image/*" />
                 </div>
               </div>
             </div>
