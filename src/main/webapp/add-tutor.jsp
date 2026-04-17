@@ -124,14 +124,12 @@
                                         <div class="form-check">
                                             <input class="form-check-input" type="radio" name="status" id="statusActive"
                                                 value="active" checked />
-                                            <label class="form-check-label" for="statusActive">Active — Visible to
-                                                students</label>
+                                            <label class="form-check-label" for="statusActive">Active</label>
                                         </div>
                                         <div class="form-check">
                                             <input class="form-check-input" type="radio" name="status"
                                                 id="statusInactive" value="inactive" />
-                                            <label class="form-check-label" for="statusInactive">Inactive —
-                                                Hidden</label>
+                                            <label class="form-check-label" for="statusInactive">Inactive</label>
                                         </div>
                                     </div>
                                 </div>
