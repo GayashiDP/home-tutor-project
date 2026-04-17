@@ -162,6 +162,11 @@
                 <div class="col-md-6">
                   <label class="form-label fw-500 small">Teaching Level</label>
                   <select class="form-select" name="teachingLevel" required>
+                    <option value="Primary(Grade 1–5)" ${tutor.teachingLevel=='Primary(Grade 1–5)' ? 'selected' : '' }>
+                      Primary(Grade 1–5)</option>
+                    <option value="Junior Secondary(Grade 6–9)" ${tutor.teachingLevel=='Junior Secondary(Grade 6–9)'
+                      ? 'selected' : '' }>
+                      Junior Secondary(Grade 6–9)</option>
                     <option value="O/L (Grade 10–11)" ${tutor.teachingLevel=='O/L (Grade 10–11)' ? 'selected' : '' }>
                       O/L (Grade 10–11)</option>
                     <option value="A/L (Grade 12–13)" ${tutor.teachingLevel=='A/L (Grade 12–13)' ? 'selected' : '' }>
