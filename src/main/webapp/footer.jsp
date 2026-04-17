@@ -1,3 +1,4 @@
+<%@ page contentType="text/html;charset=UTF-8" language="java" pageEncoding="UTF-8" %>
 <!-- FOOTER -->
 <footer class="hts-footer pt-5 pb-3">
     <div class="container">
