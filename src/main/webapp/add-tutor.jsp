@@ -118,7 +118,7 @@
                                 </div>
 
                                 <!-- Status -->
-                                <div class="section-divider">⚙️ Listing Status</div>
+                                <div class="section-divider">⚙️ Tutor Status</div>
                                 <div class="mb-4">
                                     <div class="d-flex gap-4">
                                         <div class="form-check">
