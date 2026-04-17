@@ -11,8 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
- * Servlet for retrieving a specific tutor's details and forwarding to
- * tutor-details.jsp
+ * Servlet handling requests to view a specific tutor's details profile page.
  */
 @WebServlet("/tutorDetails")
 public class TutorDetailsServlet extends HttpServlet {
@@ -20,7 +19,7 @@ public class TutorDetailsServlet extends HttpServlet {
 
     @Override
     public void init() throws ServletException {
-        // Initialize the DAO layer
+        // DAO dependency
         tutorDAO = new TutorDAO();
     }
 
@@ -37,12 +36,13 @@ public class TutorDetailsServlet extends HttpServlet {
             int id = Integer.parseInt(idParam);
             Tutor tutor = tutorDAO.getTutorById(id);
 
-            if (tutor != null) {
-                request.setAttribute("tutor", tutor);
-                request.getRequestDispatcher("tutor-details.jsp").forward(request, response);
-            } else {
+            if (tutor == null) {
                 response.sendRedirect("listTutors");
+                return;
             }
+
+            request.setAttribute("tutor", tutor);
+            request.getRequestDispatcher("tutor-details.jsp").forward(request, response);
         } catch (NumberFormatException e) {
             response.sendRedirect("listTutors");
         }

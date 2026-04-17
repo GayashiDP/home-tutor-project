@@ -5,33 +5,36 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
- * Utility class to handle the connection to the MySQL database.
- * This class ensures that there is only one way to get a connection string.
+ * This class handles connection to the our MySQL database.
+ * Made this to avoid writing connection code in every single DAO class.
  */
 public class DatabaseConnection {
-    // Database credentials and connection URL
-    // Update these to match your local setup if different!
+    // Database credentials
     private static final String URL = "jdbc:mysql://localhost:3306/home_tutor_db";
     private static final String USER = "root";
     private static final String PASSWORD = "8520";
 
+    static {
+        try {
+            // Load the MySQL JDBC Driver once when the class is loaded
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            System.err.println("MySQL JDBC Driver not found. " + e.getMessage());
+        }
+    }
+
     /**
      * Obtains a connection to the database.
+     * 
      * @return Connection object if successful, null otherwise.
      */
     public static Connection getConnection() {
         Connection connection = null;
         try {
-            // Load the MySQL JDBC Driver
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            
-            // Connect to the database
+            // Now actually connect to the DB
             connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            System.out.println("Connection to home_tutor_db successful.");
-        } catch (ClassNotFoundException e) {
-            System.out.println("MySQL JDBC Driver not found. " + e.getMessage());
         } catch (SQLException e) {
-            System.out.println("Connection failed. Check credentials and database name. " + e.getMessage());
+            System.err.println("Connection failed. Check credentials and database name. " + e.getMessage());
         }
         return connection;
     }

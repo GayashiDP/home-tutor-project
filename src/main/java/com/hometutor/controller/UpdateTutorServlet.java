@@ -22,7 +22,7 @@ public class UpdateTutorServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
+        // Helps reading special characters like names with accents correctly
         request.setCharacterEncoding("UTF-8");
 
         String idParam = request.getParameter("id");
@@ -46,25 +46,28 @@ public class UpdateTutorServlet extends HttpServlet {
                 rate = Double.parseDouble(rateStr);
             }
 
-            // Fetch existing tutor to retain fields not updated in the form
-            Tutor existingTutor = tutorDAO.getTutorById(id);
-            if (existingTutor != null) {
-                existingTutor.setFirstName(firstName);
-                existingTutor.setLastName(lastName);
-                existingTutor.setCategory(category);
-                existingTutor.setRate(rate);
-                existingTutor.setTeachingLevel(teachingLevel);
-                existingTutor.setStatus(status);
-                existingTutor.setBio(bio);
-
-                boolean success = tutorDAO.updateTutor(existingTutor);
-                if (success) {
-                    response.sendRedirect("tutorDetails?id=" + id + "&updated=1");
-                } else {
-                    response.sendRedirect("tutorDetails?id=" + id + "&error=1");
-                }
-            } else {
+            // First grab the old tutor details from DB so we don't accidentally wipe stuff
+            // out
+            Tutor tutorToUpdate = tutorDAO.getTutorById(id);
+            if (tutorToUpdate == null) {
                 response.sendRedirect("listTutors");
+                return;
+            }
+
+            // Update with the new form values
+            tutorToUpdate.setFirstName(firstName);
+            tutorToUpdate.setLastName(lastName);
+            tutorToUpdate.setCategory(category);
+            tutorToUpdate.setRate(rate);
+            tutorToUpdate.setTeachingLevel(teachingLevel);
+            tutorToUpdate.setStatus(status);
+            tutorToUpdate.setBio(bio);
+
+            boolean updateFinished = tutorDAO.updateTutor(tutorToUpdate);
+            if (updateFinished) {
+                response.sendRedirect("tutorDetails?id=" + id + "&updated=1");
+            } else {
+                response.sendRedirect("tutorDetails?id=" + id + "&error=1");
             }
         } catch (NumberFormatException e) {
             e.printStackTrace();

@@ -11,7 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
- * Servlet for handling the addition of a new Tutor to the DB.
+ * This servlet gets the form data when someone adds a new tutor.
  */
 @WebServlet("/addTutor")
 public class AddTutorServlet extends HttpServlet {
@@ -19,7 +19,7 @@ public class AddTutorServlet extends HttpServlet {
 
     @Override
     public void init() throws ServletException {
-        // Initialize the DAO layer
+        // Create DAO so we can run queries later
         tutorDAO = new TutorDAO();
     }
 
@@ -39,7 +39,7 @@ public class AddTutorServlet extends HttpServlet {
         String subjectDesc = request.getParameter("subjectDesc");
         String status = request.getParameter("status");
 
-        // Basic validation and parsing
+        // Check the rate and convert it from String to double
         double rate = 0;
         if (rateStr != null && !rateStr.isEmpty()) {
             rate = Double.parseDouble(rateStr);
@@ -49,14 +49,14 @@ public class AddTutorServlet extends HttpServlet {
         Tutor newTutor = new Tutor(0, firstName, lastName, email, phone, bio, category, rate, teachingLevel,
                 teachingMode, subjectDesc, status);
 
-        // Call the DAO to add it to the database
-        boolean isSuccess = tutorDAO.addTutor(newTutor);
+        // Send it to the database
+        boolean addedSuccessfully = tutorDAO.addTutor(newTutor);
 
-        if (isSuccess) {
-            // Redirect to tutor-catalog with success flag
+        if (addedSuccessfully) {
+            // It worked, take them to the catalog page and show success msg
             response.sendRedirect("listTutors?added=1");
         } else {
-            // Handle failure scenario (e.g., redirect to error page or back with error msg)
+            // Something broke, maybe DB error, send them back
             response.sendRedirect("add-tutor.jsp?error=1");
         }
     }
