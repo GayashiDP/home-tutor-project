@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HomeTutor — Secure Checkout</title>
+
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <style>
+        /* ================================================
+           HomeTutor — Embedded CSS (Green Theme)
+           ================================================ */
+
+        :root {
+          --primary:       #059669;
+          --primary-dark:  #047857;
+          --primary-light: #ecfdf5;
+          --primary-mid:   #6ee7b7;
+          --dark:          #064e3b;
+          --footer-bg:     #022c22;
+          --gray-100:      #f0fdf4;
+          --gray-200:      #d1fae5;
+          --gray-400:      #6b7280;
+          --gray-600:      #374151;
+          --warning:       #f59e0b;
+        }
+
+        body {
+          font-family: 'Inter', sans-serif;
+          color: var(--gray-600);
+          background: #fff;
+        }
+
+        a { text-decoration: none; }
+        ul { list-style: none; padding: 0; margin: 0; }
+
+        /* ---- NAVBAR ---- */
+        .hts-navbar {
+          background: #fff !important;
+          border-bottom: 2px solid var(--gray-200);
+          box-shadow: 0 2px 12px rgba(5,150,105,.08);
+        }
+
+        .hts-navbar .navbar-brand {
+          font-weight: 700;
+          font-size: 1.25rem;
+          color: var(--primary) !important;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .logo-box {
+          width: 38px; height: 38px;
+          background: var(--primary);
+          border-radius: 10px;
+          display: grid;
+          place-items: center;
+          font-size: 1.1rem;
+          color: #fff;
+          flex-shrink: 0;
+        }
+
+        .hts-navbar .nav-link {
+          color: var(--gray-600) !important;
+          font-weight: 500;
+          font-size: .92rem;
+          padding: 8px 14px !important;
+          border-radius: 8px;
+          transition: all .2s;
+        }
+
+        .hts-navbar .nav-link:hover,
+        .hts-navbar .nav-link.active {
+          background: var(--primary-light);
+          color: var(--primary) !important;
+        }
+
+        .btn-nav-outline {
+          border: 2px solid var(--primary);
+          color: var(--primary);
+          background: transparent;
+          font-weight: 600;
+          font-size: .88rem;
+          padding: 7px 18px;
+          border-radius: 8px;
+          transition: all .2s;
+        }
+        .btn-nav-outline:hover { background: var(--primary-light); color: var(--primary-dark); }
+
+        .btn-nav-solid {
+          background: var(--primary);
+          color: #fff;
+          border: 2px solid var(--primary);
+          font-weight: 600;
+          font-size: .88rem;
+          padding: 7px 18px;
+          border-radius: 8px;
+          transition: all .2s;
+        }
+        .btn-nav-solid:hover { background: var(--primary-dark); border-color: var(--primary-dark); color: #fff; }
+
+        /* ---- SECTION TITLES ---- */
+        .section-heading h2 {
+          font-size: 1.85rem;
+          font-weight: 700;
+          color: var(--dark);
+        }
+        .section-heading p { color: var(--gray-400); }
+        .underline-bar {
+          width: 50px; height: 4px;
+          background: var(--primary);
+          border-radius: 99px;
+          margin: 10px auto 0;
+        }
+
+        /* ---- CARDS ---- */
+        .step-card {
+          background: #fff;
+          border-radius: 14px;
+          padding: 36px 24px;
+          box-shadow: 0 2px 12px rgba(5,150,105,.08);
+          transition: all .25s;
+        }
+        .tutor-card {
+          background: #fff;
+          border-radius: 14px;
+          box-shadow: 0 2px 12px rgba(0,0,0,.06);
+          overflow: hidden;
+          transition: all .25s;
+        }
+
+        /* ---- BUTTONS ---- */
+        .btn-green {
+          background: var(--primary); color: #fff;
+          border: 2px solid var(--primary); font-weight: 600;
+          border-radius: 8px; font-size: .88rem;
+          transition: all .2s;
+        }
+        .btn-green:hover { background: var(--primary-dark); border-color: var(--primary-dark); color: #fff; }
+
+        /* ---- FOOTER ---- */
+        .hts-footer { background: var(--footer-bg); color: var(--gray-400); }
+        .footer-logo {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #fff;
+          font-weight: 700;
+          font-size: 1.1rem;
+          text-decoration: none;
+          margin-bottom: 12px;
+        }
+        .hts-footer p { font-size: .87rem; line-height: 1.75; color: var(--gray-400); }
+        .hts-footer h6 { color: #fff; font-weight: 600; font-size: .9rem; margin-bottom: 16px; }
+        .hts-footer ul li { margin-bottom: 9px; }
+        .hts-footer ul li a { color: var(--gray-400); font-size: .86rem; text-decoration: none; transition: color .2s; }
+        .hts-footer ul li a:hover { color: #fff; }
+        .footer-divider { border-color: rgba(255,255,255,.08) !important; }
+        .footer-copy { font-size: .82rem; color: var(--gray-400); }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg hts-navbar sticky-top">
+    <div class="container">
+        <a class="navbar-brand" href="index.html">
+            <span class="logo-box">📚</span>
+            HomeTutor
+        </a>
+        <button class="navbar-toggler" type="button"
+                data-bs-toggle="collapse" data-bs-target="#navMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navMenu">
+            <ul class="navbar-nav mx-auto gap-1">
+                <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="tutor-catalog.html">Find Tutors</a></li>
+                <li class="nav-item"><a class="nav-link" href="schedule.html">Schedule</a></li>
+                <li class="nav-item"><a class="nav-link" href="booking.html">Bookings</a></li>
+                <li class="nav-item"><a class="nav-link active" href="payments.html">Payments</a></li>
+                <li class="nav-item"><a class="nav-link" href="reviews.html">Reviews</a></li>
+            </ul>
+            <div class="d-flex gap-2 mt-2 mt-lg-0">
+                <a href="login.html" class="btn-nav-outline">Login</a>
+                <a href="signup.html" class="btn-nav-solid">Sign Up</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<section class="py-5 bg-white" style="min-height: 70vh;">
+    <div class="container" style="max-width: 800px;">
+        <div class="text-center section-heading mb-5">
+            <h2>Complete Your Payment</h2>
+            <p>Secure checkout for your upcoming tutoring session</p>
+            <div class="underline-bar"></div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-5 order-md-2">
+                <div class="step-card text-start h-auto">
+                    <h5 class="mb-4">Session Summary</h5>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Tutor</span>
+                        <span class="fw-bold" style="color: var(--dark);">Ms. Priya Fernando</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Subject</span>
+                        <span class="fw-bold" style="color: var(--dark);">Mathematics</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="text-muted">Date & Time</span>
+                        <span class="fw-bold text-end" style="color: var(--dark);">Oct 24, 2026<br>4:00 PM - 6:00 PM</span>
+                    </div>
+                    <hr class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">Total Due</span>
+                        <span class="fs-4 fw-bold" style="color: var(--primary);">LKR 3,000</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7 order-md-1">
+                <div class="tutor-card p-4 h-auto">
+                    <form action="paymentServlet" method="POST">
+                        <h5 class="mb-4" style="color: var(--dark);">Payment Details</h5>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" style="color: var(--gray-600); font-size: 0.9rem;">Select Payment Method</label>
+                            <select name="paymentMethod" class="form-select" style="border-color: var(--gray-200);" required>
+                                <option value="card" selected>Credit / Debit Card</option>
+                                <option value="comb">Commercial Bank Transfer</option>
+                                <option value="dialog">Dialog Finance</option>
+                                <option value="ntb">Nations Trust Bank</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" style="color: var(--gray-600); font-size: 0.9rem;">Cardholder Name</label>
+                            <input type="text" name="cardName" class="form-control" placeholder="John Doe" style="border-color: var(--gray-200);" required>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold" style="color: var(--gray-600); font-size: 0.9rem;">Card Number</label>
+                            <input type="text" name="cardNumber" class="form-control" placeholder="0000 0000 0000 0000" style="border-color: var(--gray-200);" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-green w-100 py-2 fs-6">Pay LKR 3,000 & Confirm Booking</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer class="hts-footer pt-5 pb-3">
+    <div class="container">
+        <div class="row g-4 pb-4 border-bottom footer-divider">
+
+            <div class="col-lg-4">
+                <a href="index.html" class="footer-logo">
+                    <span class="logo-box">📚</span> HomeTutor
+                </a>
+                <p>Connecting students with the best tutors for personalized learning experiences. Learn anytime, anywhere across Sri Lanka.</p>
+            </div>
+
+            <div class="col-6 col-lg-2">
+                <h6>Quick Links</h6>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="tutor-catalog.html">Find a Tutor</a></li>
+                    <li><a href="add-subject.html">Add Subject</a></li>
+                    <li><a href="booking.html">Book a Session</a></li>
+                </ul>
+            </div>
+
+            <div class="col-6 col-lg-3">
+                <h6>Subjects</h6>
+                <ul>
+                    <li><a href="tutor-catalog.html">Mathematics</a></li>
+                    <li><a href="tutor-catalog.html">Sciences</a></li>
+                    <li><a href="tutor-catalog.html">Languages</a></li>
+                    <li><a href="tutor-catalog.html">IT &amp; Computing</a></li>
+                </ul>
+            </div>
+
+            <div class="col-6 col-lg-3">
+                <h6>Support</h6>
+                <ul>
+                    <li><a href="support.html">Help Center</a></li>
+                    <li><a href="#">Contact Us</a></li>
+                    <li><a href="#">Privacy Policy</a></li>
+                    <li><a href="#">Terms of Use</a></li>
+                </ul>
+            </div>
+
+        </div>
+        <div class="d-flex justify-content-between flex-wrap gap-2 pt-3">
+            <span class="footer-copy">© 2024 HomeTutor System. All rights reserved.</span>
+            <span class="footer-copy">SE1020 — Object Oriented Programming Project</span>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
