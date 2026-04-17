@@ -26,6 +26,9 @@ public class AddTutorServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        // Helps reading special characters like names with accents correctly
+        request.setCharacterEncoding("UTF-8");
+
         // Retrieve form data
         String firstName = request.getParameter("firstName");
         String lastName = request.getParameter("lastName");

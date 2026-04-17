@@ -10,7 +10,7 @@ import java.sql.SQLException;
  */
 public class DatabaseConnection {
     // Database credentials
-    private static final String URL = "jdbc:mysql://localhost:3306/home_tutor_db";
+    private static final String URL = "jdbc:mysql://localhost:3306/home_tutor_db?useUnicode=true&characterEncoding=UTF-8";
     private static final String USER = "root";
     private static final String PASSWORD = "8520";
 
