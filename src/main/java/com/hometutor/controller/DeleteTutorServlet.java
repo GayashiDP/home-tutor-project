@@ -26,9 +26,14 @@ public class DeleteTutorServlet extends HttpServlet {
             throws ServletException, IOException {
         String idStr = request.getParameter("id");
         if (idStr != null && !idStr.isEmpty()) {
-            int id = Integer.parseInt(idStr);
-            // Delete the tutor using DAO
-            tutorDAO.deleteTutor(id);
+            try {
+                int id = Integer.parseInt(idStr);
+                // Delete the tutor using DAO
+                tutorDAO.deleteTutor(id);
+            } catch (NumberFormatException e) {
+                response.sendRedirect("listTutors");
+                return;
+            }
         }
 
         // Redirect back to the tutor list

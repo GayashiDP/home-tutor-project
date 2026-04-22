@@ -48,10 +48,24 @@ public class AddTutorServlet extends HttpServlet {
         String subjectDesc = request.getParameter("subjectDesc");
         String status = request.getParameter("status");
 
+        // Server-side validation
+        if (firstName == null || firstName.trim().isEmpty() ||
+                lastName == null || lastName.trim().isEmpty() ||
+                email == null || email.trim().isEmpty() ||
+                category == null || category.trim().isEmpty()) {
+            response.sendRedirect("add-tutor.jsp?error=1");
+            return;
+        }
+
         // Check the rate and convert it from String to double
         double rate = 0;
         if (rateStr != null && !rateStr.isEmpty()) {
-            rate = Double.parseDouble(rateStr);
+            try {
+                rate = Double.parseDouble(rateStr);
+            } catch (NumberFormatException e) {
+                response.sendRedirect("add-tutor.jsp?error=1");
+                return;
+            }
         }
 
         // Image upload handling

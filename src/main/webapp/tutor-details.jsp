@@ -62,10 +62,7 @@
                   <span class="info-label">Level</span>
                   <span class="info-value">${tutor.teachingLevel}</span>
                 </div>
-                <div class="info-row">
-                  <span class="info-label">Joined</span>
-                  <span class="info-value">Jan 2024</span>
-                </div>
+
               </div>
             </div>
 
@@ -151,6 +148,14 @@
                   <input type="text" class="form-control" name="lastName" value="${tutor.lastName}" required />
                 </div>
                 <div class="col-md-6">
+                  <label class="form-label fw-500 small">Email</label>
+                  <input type="email" class="form-control" name="email" value="${tutor.email}" required />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-500 small">Phone</label>
+                  <input type="text" class="form-control" name="phone" value="${tutor.phone}" required />
+                </div>
+                <div class="col-md-6">
                   <label class="form-label fw-500 small">Subject Category</label>
                   <select class="form-select" name="category" required>
                     <option value="Mathematics" ${tutor.category=='Mathematics' ? 'selected' : '' }>Mathematics
@@ -184,11 +189,23 @@
                   </select>
                 </div>
                 <div class="col-md-6">
+                  <label class="form-label fw-500 small">Teaching Mode</label>
+                  <select class="form-select" name="teachingMode" required>
+                    <option value="Online" ${tutor.teachingMode=='Online' ? 'selected' : '' }>Online</option>
+                    <option value="Physical" ${tutor.teachingMode=='Physical' ? 'selected' : '' }>Physical</option>
+                    <option value="Both" ${tutor.teachingMode=='Both' ? 'selected' : '' }>Both</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
                   <label class="form-label fw-500 small">Status</label>
                   <select class="form-select" name="status" required>
                     <option value="active" ${tutor.status=='active' ? 'selected' : '' }>Active</option>
                     <option value="inactive" ${tutor.status=='inactive' ? 'selected' : '' }>Inactive</option>
                   </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label fw-500 small">Subjects Description</label>
+                  <textarea class="form-control" name="subjectDesc" rows="2" required>${tutor.subjectDesc}</textarea>
                 </div>
                 <div class="col-12">
                   <label class="form-label fw-500 small">Bio</label>

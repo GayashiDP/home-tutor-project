@@ -26,16 +26,16 @@ public class DatabaseConnection {
     /**
      * Obtains a connection to the database.
      * 
-     * @return Connection object if successful, null otherwise.
+     * @return Connection object if successful.
+     * @throws RuntimeException if the connection fails.
      */
     public static Connection getConnection() {
-        Connection connection = null;
         try {
             // Now actually connect to the DB
-            connection = DriverManager.getConnection(URL, USER, PASSWORD);
+            return DriverManager.getConnection(URL, USER, PASSWORD);
         } catch (SQLException e) {
             System.err.println("Connection failed. Check credentials and database name. " + e.getMessage());
+            throw new RuntimeException("Database connection failed", e);
         }
-        return connection;
     }
 }

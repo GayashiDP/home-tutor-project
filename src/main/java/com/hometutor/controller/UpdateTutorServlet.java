@@ -41,9 +41,13 @@ public class UpdateTutorServlet extends HttpServlet {
             int id = Integer.parseInt(idParam);
             String firstName = request.getParameter("firstName");
             String lastName = request.getParameter("lastName");
+            String email = request.getParameter("email");
+            String phone = request.getParameter("phone");
             String category = request.getParameter("category");
             String rateStr = request.getParameter("rate");
             String teachingLevel = request.getParameter("teachingLevel");
+            String teachingMode = request.getParameter("teachingMode");
+            String subjectDesc = request.getParameter("subjectDesc");
             String status = request.getParameter("status");
             String bio = request.getParameter("bio");
 
@@ -78,9 +82,13 @@ public class UpdateTutorServlet extends HttpServlet {
             // Update with the new form values
             tutorToUpdate.setFirstName(firstName);
             tutorToUpdate.setLastName(lastName);
+            tutorToUpdate.setEmail(email);
+            tutorToUpdate.setPhone(phone);
             tutorToUpdate.setCategory(category);
             tutorToUpdate.setRate(rate);
             tutorToUpdate.setTeachingLevel(teachingLevel);
+            tutorToUpdate.setTeachingMode(teachingMode);
+            tutorToUpdate.setSubjectDesc(subjectDesc);
             tutorToUpdate.setStatus(status);
             tutorToUpdate.setBio(bio);
 

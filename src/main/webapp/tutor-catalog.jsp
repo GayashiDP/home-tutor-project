@@ -42,12 +42,13 @@
                             <label class="form-label fw-semibold small mb-1">Subject</label>
                             <select class="form-select" id="subjectFilter" onchange="filterTutors()">
                                 <option value="">All Subjects</option>
-                                <option>Mathematics</option>
-                                <option>Physics</option>
-                                <option>Chemistry</option>
-                                <option>Biology</option>
-                                <option>IT / Computing</option>
-                                <option>English</option>
+                                <jsp:useBean id="uniqueCategories" class="java.util.LinkedHashSet" />
+                                <c:forEach var="tutor" items="${tutorsList}">
+                                    <c:set var="dummy" value="${uniqueCategories.add(tutor.category)}" />
+                                </c:forEach>
+                                <c:forEach var="category" items="${uniqueCategories}">
+                                    <option value="${category}">${category}</option>
+                                </c:forEach>
                             </select>
                         </div>
                         <div class="col-md-2">
