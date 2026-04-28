@@ -16,10 +16,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
 
-/**
- * Controller to handle "Export Data" functionality.
- * Generates the CSV using FileStorageUtil and streams it to the user.
- */
 @WebServlet("/backupTutors")
 public class BackupTutorsServlet extends HttpServlet {
 
@@ -34,21 +30,21 @@ public class BackupTutorsServlet extends HttpServlet {
 
         List<Tutor> allTutors = tutorDAO.getAllTutors();
 
-        // Use a temporary folder for creating the file on the server
+        
         String tempDir = System.getProperty("java.io.tmpdir");
         String filePath = tempDir + File.separator + "tutors_backup.csv";
 
-        // Write the data to a CSV file (Evaluated under: File Handling)
+       
         boolean isSaved = FileStorageUtil.saveTutorsToCSV(allTutors, filePath);
 
         if (isSaved) {
             File downloadFile = new File(filePath);
             response.setContentType("text/csv");
             response.setContentLength((int) downloadFile.length());
-            // Prompts a browser download
+        
             response.setHeader("Content-Disposition", "attachment; filename=\"tutors_backup.csv\"");
 
-            // Output Stream to send file back
+           
             try (FileInputStream inStream = new FileInputStream(downloadFile);
                     OutputStream outStream = response.getOutputStream()) {
 
