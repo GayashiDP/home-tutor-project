@@ -60,9 +60,12 @@
                             </select>
                         </div>
 
-                        <!-- ADMIN ONLY: Add tutor button -->
-                        <div class="col-md-2 admin-only" style="display:block;">
-                            <a href="add-tutor.jsp" class="btn btn-green w-100">+ Add Tutor</a>
+                        <!-- ADMIN ONLY: Admin actions -->
+                        <div class="col-md-2 admin-only">
+                            <div class="d-flex" style="gap: 5px;">
+                                <a href="backupTutors" class="btn btn-outline-secondary w-50" title="Export CSV Data File" style="padding: 0.375rem 0.5rem; white-space: nowrap;">📄 CSV</a>
+                                <a href="add-tutor.jsp" class="btn btn-green w-50">+ Add</a>
+                            </div>
                         </div>
 
                     </div>
