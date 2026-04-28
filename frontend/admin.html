@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeTour | Administration Control</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=Plus+Jakarta+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-container { padding-top: 120px; min-height: 100vh; }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem; }
+        .admin-table-card { padding: 0; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; color: var(--light); }
+        th { text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.03); color: var(--accent); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px; }
+        td { padding: 1.5rem; border-top: 1px solid var(--glass-border); vertical-align: top; }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+        .btn-delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        .btn-delete:hover { background: #ef4444; color: white; }
+        .reply-box { margin-top: 1rem; display: flex; gap: 0.5rem; }
+        .reply-input { flex: 1; padding: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: white; }
+        .btn-reply { background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; }
+        .status-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 100px; font-size: 0.75rem; font-weight: 700; }
+        .status-replied { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .status-pending { background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
+    </style>
+</head>
+<body>
+    <div class="bg-mesh">
+        <div class="blob-1"></div>
+        <div class="blob-2"></div>
+    </div>
+
+    <nav id="navbar">
+        <div class="container">
+            <div class="logo">Home<span>Tour</span></div>
+            <ul>
+                <li><a href="index.html">Back to Site</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="admin-container container">
+        <header class="admin-header reveal">
+            <div>
+                <h1>Review Moderation</h1>
+                <p style="color: var(--gray);">Secure gateway for property management.</p>
+            </div>
+            <div class="hero-stats" style="margin-top: 0; padding: 1rem 2rem;">
+                <div class="stat"><span id="adminTotal">0</span><small>Live</small></div>
+            </div>
+        </header>
+
+        <div class="glass admin-table-card reveal">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer / Property</th>
+                        <th>Review Details</th>
+                        <th>Management Response</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="adminTableBody">
+                    <!-- Rows injected by admin.js -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="admin.js"></script>
+</body>
+</html>
