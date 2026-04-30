@@ -15,6 +15,7 @@ buildNumber.properties
 *.iws
 *.iml
 *.ipr
+.smarttomcat/
 
 # VS Code
 .vscode/
