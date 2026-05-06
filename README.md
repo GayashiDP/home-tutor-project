@@ -1,29 +1,80 @@
-# Home Tutor Search and Booking System 📚
+# Home Tutor System
 
-## Project Overview
-[cite_start]This is a web-based application developed for the SE1020 Object-Oriented Programming module[cite: 1, 4]. The system allows students to search for available home tutors, manage bookings, and leave reviews. [cite_start]It demonstrates the practical application of OOP principles and file-based data management without the use of a traditional database[cite: 5, 7].
+Full-stack tutoring platform for student registration, login, role-based dashboards, and profile management.
 
-## Core Features & CRUD Operations
-[cite_start]This project implements minimum 3 CRUD (Create, Read, Update, Delete) operations per team member using file handling techniques[cite: 8]:
-* **User Management:** Register students and tutors, update profiles, and delete accounts (saves to `users.txt`).
-* **Tutor Search & Catalog:** Add new subjects/tutors, search by subject or location, and update availability (saves to `tutors.txt`).
-* **Booking System:** Create new tutoring appointments, read schedules, and cancel bookings (saves to `bookings.txt`). 
-* **Feedback Management:** Submit, view, and moderate tutor reviews (saves to `reviews.txt`).
+## Tech Stack
 
-## Technologies Used
-* [cite_start]**Backend:** Java, Spring Boot, JSP Servlets [cite: 12, 38]
-* [cite_start]**Frontend:** HTML, CSS, JavaScript (with Bootstrap/Tailwind for UI enhancements) [cite: 12]
-* [cite_start]**Data Storage:** File Read/Write operations (.txt files) [cite: 13, 39]
-* [cite_start]**Version Control:** GitHub [cite: 14]
+- Frontend: React, Vite, React Router, React Hook Form, Zod, Axios
+- Backend: Java 17, Spring Boot, JDBC, Supabase Postgres
+- Auth: Server-issued session token stored by the frontend
 
-## OOP Concepts Applied
-[cite_start]This system heavily utilizes core Object-Oriented Programming concepts[cite: 7]:
-* **Encapsulation:** Securing user, tutor, and booking data within respective classes using getters and setters.
-* **Inheritance:** Establishing a base `User` class, with `Student` and `Tutor` classes inheriting from it.
-* **Polymorphism:** Utilizing method overriding for different types of users (e.g., distinct dashboard displays or booking permission checks).
+## Repository Layout
 
-## Setup Instructions
-1. Clone this repository to your local machine.
-2. [cite_start]Open the project folder in IntelliJ IDEA[cite: 11].
-3. Ensure your Java and Spring Boot configurations are correctly set up.
-4. [cite_start]Run the application and access the minimum 3 UI pages via your localhost[cite: 40].
+```text
+.
+  frontend/              React client
+  backend/               Spring Boot API
+  PROJECT_STRUCTURE.md   Detailed source tree guide
+  IMPLEMENTATION_GUIDE.md
+```
+
+## Prerequisites
+
+- Node.js 20+
+- Java 17+
+- Maven 3.9+
+- Supabase project with database password
+- Optional: `psql` for running migrations from the terminal
+
+## Setup
+
+```bash
+npm install --prefix frontend
+cp frontend/.env.example frontend/.env
+cp backend/.env.example backend/.env
+```
+
+Configure `backend/.env` with your Supabase database host, database name, user, and password.
+
+Run migrations:
+
+```bash
+psql "host=db.your-project-ref.supabase.co port=5432 dbname=postgres user=postgres sslmode=require" -f backend/db/migrations.sql
+```
+
+## Run Locally
+
+Start the backend:
+
+```bash
+npm run dev:backend
+```
+
+Start the frontend in another terminal:
+
+```bash
+npm run dev:frontend
+```
+
+- Frontend: http://localhost:5173
+- Backend: http://localhost:5001
+
+## Verification
+
+```bash
+npm run lint
+npm run build
+```
+
+## API Summary
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/profile`
+- `PATCH /api/profile`
+
+## GitHub Notes
+
+- `.env` files, `node_modules`, build outputs, and Java targets are ignored.
+- Use `.env.example` files as templates for local configuration.
+- Do not commit secrets or generated build folders.

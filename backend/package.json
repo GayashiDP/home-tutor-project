@@ -1,0 +1,15 @@
+{
+  "name": "home-tutor-backend",
+  "version": "1.0.0",
+  "description": "Home Tutor System Java Backend API",
+  "scripts": {
+    "start": "mvn spring-boot:run",
+    "dev": "mvn spring-boot:run",
+    "build": "mvn package"
+  },
+  "keywords": ["tutoring", "api"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {}
+}
