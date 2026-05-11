@@ -1,0 +1,14 @@
+{
+  "name": "home-tutor-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack Home Tutor System with a React frontend and Spring Boot backend.",
+  "scripts": {
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "mvn -f backend/pom.xml spring-boot:run",
+    "build": "npm --prefix frontend run build && mvn -f backend/pom.xml clean test",
+    "build:frontend": "npm --prefix frontend run build",
+    "test:backend": "mvn -f backend/pom.xml clean test",
+    "lint": "npm --prefix frontend run lint"
+  }
+}

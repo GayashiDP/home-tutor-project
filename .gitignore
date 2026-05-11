@@ -1,0 +1,21 @@
+# IDE related
+.idea/
+*.iml
+out/
+gen/
+.vscode/
+
+# MacOS specific (වැදගත්ම එකක්)
+__MACOSX/
+.DS_Store
+
+# Build files (Java/Maven/Gradle)
+target/
+build/
+
+# Node modules
+node_modules/
+
+# Logs and temp files
+*.log
+.env
