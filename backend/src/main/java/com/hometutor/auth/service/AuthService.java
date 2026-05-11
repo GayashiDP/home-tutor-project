@@ -7,24 +7,33 @@ import com.hometutor.auth.exception.DuplicateEmailException;
 import com.hometutor.auth.exception.InvalidCredentialsException;
 import com.hometutor.user.UserRepository;
 import com.hometutor.user.UserRepository.UserRecord;
-import java.security.SecureRandom;
-import java.util.Base64;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.UUID;
+import javax.crypto.SecretKey;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
   private final UserRepository userRepository;
+  private final String jwtSecret;
+  private final long jwtExpirationMs;
   private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(10);
-  private final SecureRandom secureRandom = new SecureRandom();
-  private final Map<String, Map<String, Object>> sessions = new ConcurrentHashMap<>();
 
-  public AuthService(UserRepository userRepository) {
+  public AuthService(
+      UserRepository userRepository,
+      @Value("${auth.jwt.secret}") String jwtSecret,
+      @Value("${auth.jwt.expiration-ms}") long jwtExpirationMs) {
     this.userRepository = userRepository;
+    this.jwtSecret = jwtSecret;
+    this.jwtExpirationMs = jwtExpirationMs;
   }
 
   public Map<String, Object> register(RegisterRequest request) {
@@ -65,30 +74,50 @@ public class AuthService {
         "email", user.email(),
         "role", user.role(),
         "bio", user.bio() == null ? "" : user.bio());
-    String token = createSessionToken();
-    sessions.put(token, publicUser);
+    String token = createJwt(user);
 
     return Map.of("token", token, "user", publicUser);
   }
 
   public String requireUserId(String authorizationHeader) {
-    Map<String, Object> user = sessions.get(extractToken(authorizationHeader));
+    try {
+      String userId = Jwts.parser()
+          .verifyWith(signingKey())
+          .build()
+          .parseSignedClaims(extractToken(authorizationHeader))
+          .getPayload()
+          .getSubject();
 
-    if (user == null) {
+      if (userId == null || userId.isBlank()) {
+        throw new AuthenticationRequiredException();
+      }
+
+      return userId;
+    } catch (JwtException | IllegalArgumentException exception) {
       throw new AuthenticationRequiredException();
     }
-
-    return user.get("id").toString();
   }
 
   public void refreshSessionUser(String authorizationHeader, Map<String, Object> user) {
-    sessions.put(extractToken(authorizationHeader), user);
+    // JWTs are stateless. Profile changes are reflected through DB-backed profile reads.
   }
 
-  private String createSessionToken() {
-    byte[] bytes = new byte[32];
-    secureRandom.nextBytes(bytes);
-    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+  private String createJwt(UserRecord user) {
+    Date issuedAt = new Date();
+    Date expiresAt = new Date(issuedAt.getTime() + jwtExpirationMs);
+
+    return Jwts.builder()
+        .subject(user.id())
+        .claim("email", user.email())
+        .claim("role", user.role())
+        .issuedAt(issuedAt)
+        .expiration(expiresAt)
+        .signWith(signingKey())
+        .compact();
+  }
+
+  private SecretKey signingKey() {
+    return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
   }
 
   private String extractToken(String authorizationHeader) {

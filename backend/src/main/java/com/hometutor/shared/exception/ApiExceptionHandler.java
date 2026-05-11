@@ -4,6 +4,10 @@ import com.hometutor.auth.exception.AuthenticationRequiredException;
 import com.hometutor.auth.exception.DuplicateEmailException;
 import com.hometutor.auth.exception.InvalidCredentialsException;
 import com.hometutor.profile.exception.ProfileNotFoundException;
+import com.hometutor.subject.exception.DuplicateSubjectException;
+import com.hometutor.subject.exception.SubjectNotFoundException;
+import com.hometutor.subject.exception.TutorOnlySubjectException;
+import com.hometutor.tutor.exception.TutorNotFoundException;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -53,6 +57,30 @@ public class ApiExceptionHandler {
   public ResponseEntity<Map<String, String>> handleProfileNotFound() {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .body(Map.of("error", "Profile not found"));
+  }
+
+  @ExceptionHandler(TutorNotFoundException.class)
+  public ResponseEntity<Map<String, String>> handleTutorNotFound() {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(Map.of("error", "Tutor not found"));
+  }
+
+  @ExceptionHandler(DuplicateSubjectException.class)
+  public ResponseEntity<Map<String, String>> handleDuplicateSubject() {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(Map.of("error", "Subject already exists", "field", "name"));
+  }
+
+  @ExceptionHandler(SubjectNotFoundException.class)
+  public ResponseEntity<Map<String, String>> handleSubjectNotFound() {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(Map.of("error", "Subject not found"));
+  }
+
+  @ExceptionHandler(TutorOnlySubjectException.class)
+  public ResponseEntity<Map<String, String>> handleTutorOnlySubject() {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(Map.of("error", "Only tutors can manage subjects"));
   }
 
   @ExceptionHandler(NoResourceFoundException.class)
