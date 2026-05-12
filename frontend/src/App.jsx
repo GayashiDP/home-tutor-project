@@ -8,6 +8,7 @@ import SignupPage from './pages/auth/SignupPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/profile/ProfilePage';
+import MySessionsPage from './pages/sessions/MySessionsPage';
 import SubjectManagerPage from './pages/subjects/SubjectManagerPage';
 import TutorCatalogPage from './pages/tutors/TutorCatalogPage';
 import TutorDetailPage from './pages/tutors/TutorDetailPage';
@@ -37,6 +38,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sessions"
+            element={
+              <ProtectedRoute>
+                <MySessionsPage />
               </ProtectedRoute>
             }
           />

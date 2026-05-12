@@ -33,6 +33,9 @@ export default function Navbar() {
                 <Link to="/dashboard" className="app-navbar-link">
                   Dashboard
                 </Link>
+                <Link to="/sessions" className="app-navbar-link">
+                  Sessions
+                </Link>
                 {user.role === 'Tutor' && (
                   <>
                     <Link to="/tutor/subjects" className="app-navbar-link">
@@ -106,6 +109,13 @@ export default function Navbar() {
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Dashboard
+                </Link>
+                <Link
+                  to="/sessions"
+                  className="app-navbar-mobile-link"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sessions
                 </Link>
                 {user.role === 'Tutor' && (
                   <>
