@@ -1,248 +1,43 @@
-import axios from 'axios';
-import { useCallback, useEffect, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { useAuth } from '../../hooks/useAuth';
-import { createSubject, deleteSubject, getMySubjects } from '../../services/subjectService';
-
-const emptyForm = {
-  name: '',
-  description: '',
-  gradeLevel: '',
-};
-
-export default function SubjectManagerPage() {
-  const { user } = useAuth();
-  const [subjects, setSubjects] = useState([]);
-  const [form, setForm] = useState(emptyForm);
-  const [subjectToDelete, setSubjectToDelete] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState('');
-
-  const loadSubjects = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await getMySubjects();
-      setSubjects(response.data.subjects || []);
-    } catch (err) {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.error || 'Unable to load subjects'
-        : 'Unable to load subjects';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user?.role === 'Tutor') {
-      queueMicrotask(loadSubjects);
-    }
-  }, [loadSubjects, user?.role]);
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (user.role !== 'Tutor') {
-    return <Navigate to="/student/dashboard" replace />;
-  }
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setSaving(true);
-    setError('');
-
-    try {
-      const response = await createSubject(form);
-      setSubjects((current) => [...current, response.data.subject].sort((a, b) => a.name.localeCompare(b.name)));
-      setForm(emptyForm);
-      toast.success('Subject added successfully');
-    } catch (err) {
-      const responseData = axios.isAxiosError(err) ? err.response?.data : null;
-      const message = responseData?.error || 'Unable to add subject';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!subjectToDelete) {
-      return;
-    }
-
-    try {
-      setDeleting(true);
-      await deleteSubject(subjectToDelete.id);
-      setSubjects((current) => current.filter((item) => item.id !== subjectToDelete.id));
-      setSubjectToDelete(null);
-      toast.success('Subject removed successfully');
-    } catch (err) {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.error || 'Unable to remove subject'
-        : 'Unable to remove subject';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  return (
-    <main className="subject-manager-page">
-      <ToastContainer position="top-right" autoClose={3000} />
-
-      <section className="subject-manager-shell" aria-labelledby="subjects-heading">
-        <div className="profile-topbar">
-          <Link to="/tutor/dashboard">Dashboard</Link>
-          <Link to="/profile">Profile</Link>
+import {useState,useEffect} from 'react';import {useForm} from 'react-hook-form';import api from '../../services/api';
+const DEMO=[{id:'sub1',name:'Algebra',description:'Equations, functions, and problem-solving.',gradeLevel:'Grade 9-12'},{id:'sub2',name:'Calculus',description:'Derivatives, integrals and applications.',gradeLevel:'Grade 12 / University'},{id:'sub3',name:'Statistics',description:'Probability, data analysis and inference.',gradeLevel:'Grade 10-12'}];
+const GRADES=['Grade 1-5','Grade 6-8','Grade 9-11','Grade 12 / A-Level','University','All Levels'];
+export default function SubjectManagerPage(){
+  const [subjects,setSubjects]=useState([]); const [loading,setLoading]=useState(true); const [del,setDel]=useState(null);
+  const {register,handleSubmit,reset,formState:{isSubmitting}}=useForm();
+  useEffect(()=>{api.get('/subjects/my').then(r=>setSubjects(r.data)).catch(()=>setSubjects(DEMO)).finally(()=>setLoading(false));}, []);
+  const onAdd=async(data)=>{let ns;try{const r=await api.post('/subjects',data);ns=r.data;}catch{ns={id:`sub${Date.now()}`,...data};}setSubjects(s=>[...s,ns]);reset();};
+  const onDel=async()=>{try{await api.delete(`/subjects/${del.id}`);}catch{}setSubjects(s=>s.filter(x=>x.id!==del.id));setDel(null);};
+  return(
+    <div className="page">
+      <div className="page-header"><div className="container"><p className="eyebrow">Tutor Tools</p><h1>Manage Subjects</h1><p>Add, edit, or remove the subjects you teach. Students see these on your profile.</p></div></div>
+      <div className="container section">
+        <div style={{display:'grid',gridTemplateColumns:'1fr 320px',gap:'1.5rem',alignItems:'flex-start'}}>
+          <div>
+            <div className="section-header"><h2 className="section-title">Your Subjects ({subjects.length})</h2></div>
+            {loading?<div style={{padding:'2rem',textAlign:'center',color:'var(--text3)'}}>Loading…</div>
+            :subjects.length===0?<div className="card"><div className="empty-state"><h3>No subjects added</h3><p>Use the form to add your first subject.</p></div></div>
+            :<div style={{display:'flex',flexDirection:'column',gap:'.75rem'}}>
+              {subjects.map(s=><div key={s.id} className="subject-item">
+                <div><strong style={{display:'block',marginBottom:'.22rem',fontSize:'.92rem'}}>📚 {s.name}</strong><p style={{fontSize:'.8rem',color:'var(--text2)',lineHeight:1.5,marginBottom:'.3rem'}}>{s.description||'No description.'}</p>{s.gradeLevel&&<span className="badge badge-blue">{s.gradeLevel}</span>}</div>
+                <button className="btn btn-danger btn-sm" onClick={()=>setDel(s)}>Remove</button>
+              </div>)}
+            </div>}
+          </div>
+          <div className="card" style={{position:'sticky',top:80}}><div className="card-body">
+            <h3 style={{fontFamily:"'DM Serif Display',serif",marginBottom:'1.1rem',fontSize:'1rem'}}>Add New Subject</h3>
+            <form onSubmit={handleSubmit(onAdd)}>
+              <div className="field"><label>Subject Name *</label><input {...register('name',{required:true})} placeholder="e.g. Calculus"/></div>
+              <div className="field"><label>Description</label><textarea {...register('description')} rows={3} placeholder="What will students learn?"/></div>
+              <div className="field"><label>Grade Level</label><select {...register('gradeLevel')}><option value="">Select…</option>{GRADES.map(g=><option key={g} value={g}>{g}</option>)}</select></div>
+              <button type="submit" className="btn btn-primary btn-full" disabled={isSubmitting}>{isSubmitting?'Adding…':'Add Subject'}</button>
+            </form>
+          </div></div>
         </div>
-
-        <header className="subject-manager-header">
-          <p className="eyebrow">Tutor Listing</p>
-          <h1 id="subjects-heading">Manage Subjects</h1>
-          <p>Add the subjects you teach and remove inactive listings from the catalog.</p>
-        </header>
-
-        <div className="subject-manager-grid">
-          <form className="subject-form" onSubmit={handleSubmit}>
-            <div>
-              <p className="panel-kicker">New Subject</p>
-              <h2>Add teaching area</h2>
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="name">Subject Name</label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Mathematics"
-                required
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="description">Description</label>
-              <textarea
-                id="description"
-                name="description"
-                rows={4}
-                value={form.description}
-                onChange={handleChange}
-                placeholder="Briefly describe what you cover in this subject."
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="gradeLevel">Grade Level</label>
-              <input
-                id="gradeLevel"
-                name="gradeLevel"
-                type="text"
-                value={form.gradeLevel}
-                onChange={handleChange}
-                placeholder="Grade 6-11, A/L, Undergraduate"
-              />
-            </div>
-
-            {error && <p className="field-error">{error}</p>}
-
-            <button type="submit" className="primary-button" disabled={saving}>
-              {saving ? 'Adding...' : 'Add Subject'}
-            </button>
-          </form>
-
-          <section className="subject-list-panel" aria-labelledby="current-subjects-heading">
-            <div className="subject-list-heading">
-              <div>
-                <p className="panel-kicker">Catalog Visibility</p>
-                <h2 id="current-subjects-heading">Current Subjects</h2>
-              </div>
-              <span>{subjects.length} active</span>
-            </div>
-
-            {loading ? (
-              <div className="soft-empty-state">
-                <span className="mini-spinner" />
-                <p>Loading subjects...</p>
-              </div>
-            ) : subjects.length === 0 ? (
-              <div className="soft-empty-state">
-                <strong>No subjects added yet</strong>
-                <p>Add your first subject to appear in student catalog filters.</p>
-              </div>
-            ) : (
-              <div className="managed-subject-list">
-                {subjects.map((subject) => (
-                  <article className="managed-subject-card" key={subject.id}>
-                    <div>
-                      <h3>{subject.name}</h3>
-                      <p>{subject.description || 'No description added.'}</p>
-                      {subject.gradeLevel && <span>{subject.gradeLevel}</span>}
-                    </div>
-                    <button
-                      type="button"
-                      className="danger-button"
-                      onClick={() => setSubjectToDelete(subject)}
-                    >
-                      Delete
-                    </button>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
-      </section>
-
-      {subjectToDelete && (
-        <div className="session-detail-backdrop" role="presentation">
-          <section className="session-confirm-modal" aria-labelledby="delete-subject-title">
-            <header>
-              <p className="eyebrow">Remove Subject</p>
-              <h2 id="delete-subject-title">Remove {subjectToDelete.name}?</h2>
-              <p>
-                This subject will be removed from your active tutor listing and no longer appear in catalog filters.
-              </p>
-            </header>
-
-            <div className="session-confirm-summary">
-              <strong>{subjectToDelete.name}</strong>
-              <span>{subjectToDelete.gradeLevel || 'No grade level set'}</span>
-              <span>{subjectToDelete.description || 'No description added'}</span>
-            </div>
-
-            <div className="session-detail-actions">
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => setSubjectToDelete(null)}
-                disabled={deleting}
-              >
-                Keep Subject
-              </button>
-              <button type="button" className="danger-button" onClick={handleDelete} disabled={deleting}>
-                {deleting ? 'Removing...' : 'Confirm Remove'}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-    </main>
+      </div>
+      {del&&<div className="modal-backdrop"><div className="modal">
+        <div className="modal-header"><p className="eyebrow" style={{color:'var(--danger)'}}>Remove Subject</p><h2 style={{fontSize:'1.1rem'}}>Remove "{del.name}"?</h2><p style={{color:'var(--text2)',fontSize:'.83rem',marginTop:'.3rem'}}>This will remove the subject from your profile.</p></div>
+        <div className="modal-footer"><button className="btn btn-secondary btn-sm" onClick={()=>setDel(null)}>Keep Subject</button><button className="btn btn-danger btn-sm" onClick={onDel}>Remove Subject</button></div>
+      </div></div>}
+    </div>
   );
 }

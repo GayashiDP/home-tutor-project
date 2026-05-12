@@ -33,16 +33,37 @@ public class UserRepository {
         role);
   }
 
+  public void upsertAdmin(String id, String name, String email, String passwordHash) {
+    jdbcTemplate.update(
+        """
+        INSERT INTO users (id, name, email, password_hash, role, status)
+        VALUES (CAST(? AS uuid), ?, ?, ?, 'Admin', 'Active')
+        ON CONFLICT (email)
+        DO UPDATE SET name = EXCLUDED.name, password_hash = EXCLUDED.password_hash, role = 'Admin', status = 'Active'
+        """,
+        id,
+        name,
+        email,
+        passwordHash);
+  }
+
+  public void allowAdminRole() {
+    jdbcTemplate.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check");
+    jdbcTemplate.execute(
+        "ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('Student', 'Tutor', 'Admin'))");
+  }
+
   public Optional<UserRecord> findByEmail(String email) {
     return jdbcTemplate.query(
-        "SELECT id, name, email, password_hash, role, bio FROM users WHERE email = ?",
+        "SELECT id, name, email, password_hash, role, bio, COALESCE(status, 'Active') AS status FROM users WHERE email = ?",
         (rs, rowNum) -> new UserRecord(
             rs.getString("id"),
             rs.getString("name"),
             rs.getString("email"),
             rs.getString("password_hash"),
             rs.getString("role"),
-            rs.getString("bio")),
+            rs.getString("bio"),
+            rs.getString("status")),
         email)
         .stream()
         .findFirst();
@@ -50,14 +71,15 @@ public class UserRepository {
 
   public Optional<UserRecord> findById(String id) {
     return jdbcTemplate.query(
-        "SELECT id, name, email, password_hash, role, bio FROM users WHERE id = CAST(? AS uuid)",
+        "SELECT id, name, email, password_hash, role, bio, COALESCE(status, 'Active') AS status FROM users WHERE id = CAST(? AS uuid)",
         (rs, rowNum) -> new UserRecord(
             rs.getString("id"),
             rs.getString("name"),
             rs.getString("email"),
             rs.getString("password_hash"),
             rs.getString("role"),
-            rs.getString("bio")),
+            rs.getString("bio"),
+            rs.getString("status")),
         id)
         .stream()
         .findFirst();
@@ -66,10 +88,11 @@ public class UserRepository {
   public List<TutorRecord> findTutors(String name, String subject) {
     List<Object> params = new ArrayList<>();
     StringBuilder sql = new StringBuilder("""
-        SELECT DISTINCT u.id, u.name, u.email, u.role, u.bio, u.hourly_rate
+        SELECT DISTINCT u.id, u.name, u.email, u.role, u.bio, u.hourly_rate, COALESCE(u.status, 'Active') AS status
         FROM users u
         LEFT JOIN subjects s ON s.tutor_id = u.id AND s.is_active = TRUE
         WHERE u.role = 'Tutor'
+          AND COALESCE(u.status, 'Active') = 'Active'
         """);
 
     if (name != null && !name.isBlank()) {
@@ -92,7 +115,8 @@ public class UserRepository {
             rs.getString("email"),
             rs.getString("role"),
             rs.getString("bio"),
-            rs.getBigDecimal("hourly_rate")),
+            rs.getBigDecimal("hourly_rate"),
+            rs.getString("status")),
         params.toArray());
   }
 
@@ -110,9 +134,10 @@ public class UserRepository {
   public Optional<TutorRecord> findTutorById(String id) {
     return jdbcTemplate.query(
         """
-        SELECT id, name, email, role, bio, hourly_rate
+        SELECT id, name, email, role, bio, hourly_rate, COALESCE(status, 'Active') AS status
         FROM users
         WHERE id = CAST(? AS uuid) AND role = 'Tutor'
+          AND COALESCE(status, 'Active') = 'Active'
         """,
         (rs, rowNum) -> new TutorRecord(
             rs.getString("id"),
@@ -120,7 +145,8 @@ public class UserRepository {
             rs.getString("email"),
             rs.getString("role"),
             rs.getString("bio"),
-            rs.getBigDecimal("hourly_rate")),
+            rs.getBigDecimal("hourly_rate"),
+            rs.getString("status")),
         id)
         .stream()
         .findFirst();
@@ -389,6 +415,21 @@ public class UserRepository {
     return new BookingRecord(id, studentId, tutorId, slotId, subject, "Pending", sessionDate);
   }
 
+  public boolean updateSessionPriceForTutor(String tutorId, String bookingId, java.math.BigDecimal price) {
+    int rows = jdbcTemplate.update(
+        """
+        UPDATE bookings
+        SET session_price = ?
+        WHERE id = CAST(? AS uuid)
+          AND tutor_id = CAST(? AS uuid)
+          AND status IN ('Pending', 'Confirmed')
+        """,
+        price,
+        bookingId,
+        tutorId);
+    return rows > 0;
+  }
+
   public List<SessionRecord> findSessionsByUser(String userId, String role) {
     String participantJoin = "Tutor".equals(role)
         ? "JOIN users other_user ON other_user.id = b.student_id"
@@ -405,7 +446,11 @@ public class UserRepository {
                student_user.name AS student_name,
                b.tutor_id::text AS tutor_id,
                tutor_user.name AS tutor_name,
-               tutor_user.hourly_rate AS hourly_rate,
+               COALESCE(b.session_price, tutor_user.hourly_rate) AS hourly_rate,
+               b.session_price AS session_price,
+               payment.id::text AS payment_id,
+               COALESCE(payment.status, '') AS payment_status,
+               COALESCE(payment.slip_file_name, '') AS slip_file_name,
                other_user.name AS participant_name,
                EXISTS (
                  SELECT 1
@@ -417,6 +462,13 @@ public class UserRepository {
         LEFT JOIN availability_slots s ON s.id = b.slot_id
         JOIN users student_user ON student_user.id = b.student_id
         JOIN users tutor_user ON tutor_user.id = b.tutor_id
+        LEFT JOIN LATERAL (
+          SELECT p.id, p.status, p.slip_file_name
+          FROM payments p
+          WHERE p.booking_id = b.id
+          ORDER BY p.created_at DESC
+          LIMIT 1
+        ) payment ON TRUE
         %s
         WHERE %s = CAST(? AS uuid)
         ORDER BY b.session_date DESC, s.start_time DESC NULLS LAST
@@ -441,7 +493,11 @@ public class UserRepository {
                student_user.name AS student_name,
                b.tutor_id::text AS tutor_id,
                tutor_user.name AS tutor_name,
-               tutor_user.hourly_rate AS hourly_rate,
+               COALESCE(b.session_price, tutor_user.hourly_rate) AS hourly_rate,
+               b.session_price AS session_price,
+               payment.id::text AS payment_id,
+               COALESCE(payment.status, '') AS payment_status,
+               COALESCE(payment.slip_file_name, '') AS slip_file_name,
                other_user.name AS participant_name,
                EXISTS (
                  SELECT 1
@@ -453,6 +509,13 @@ public class UserRepository {
         LEFT JOIN availability_slots s ON s.id = b.slot_id
         JOIN users student_user ON student_user.id = b.student_id
         JOIN users tutor_user ON tutor_user.id = b.tutor_id
+        LEFT JOIN LATERAL (
+          SELECT p.id, p.status, p.slip_file_name
+          FROM payments p
+          WHERE p.booking_id = b.id
+          ORDER BY p.created_at DESC
+          LIMIT 1
+        ) payment ON TRUE
         %s
         WHERE b.id = CAST(? AS uuid)
           AND %s = CAST(? AS uuid)
@@ -503,9 +566,12 @@ public class UserRepository {
     return jdbcTemplate.query(
         """
         SELECT r.id, r.booking_id::text, r.student_id::text, student_user.name AS student_name,
-               r.tutor_id::text, r.rating, COALESCE(r.comment, '') AS comment, r.created_at::text
+               r.tutor_id::text, tutor_user.name AS tutor_name, COALESCE(b.subject, '') AS subject,
+               r.rating, COALESCE(r.comment, '') AS comment, r.created_at::text
         FROM reviews r
         JOIN users student_user ON student_user.id = r.student_id
+        JOIN users tutor_user ON tutor_user.id = r.tutor_id
+        LEFT JOIN bookings b ON b.id = r.booking_id
         WHERE r.id = CAST(? AS uuid)
         """,
         this::mapReviewRecord,
@@ -518,14 +584,50 @@ public class UserRepository {
     return jdbcTemplate.query(
         """
         SELECT r.id, r.booking_id::text, r.student_id::text, student_user.name AS student_name,
-               r.tutor_id::text, r.rating, COALESCE(r.comment, '') AS comment, r.created_at::text
+               r.tutor_id::text, tutor_user.name AS tutor_name, COALESCE(b.subject, '') AS subject,
+               r.rating, COALESCE(r.comment, '') AS comment, r.created_at::text
         FROM reviews r
         JOIN users student_user ON student_user.id = r.student_id
+        JOIN users tutor_user ON tutor_user.id = r.tutor_id
+        LEFT JOIN bookings b ON b.id = r.booking_id
         WHERE r.tutor_id = CAST(? AS uuid)
         ORDER BY r.created_at DESC
         """,
         this::mapReviewRecord,
         tutorId);
+  }
+
+  public List<ReviewRecord> findAllReviewsForAdmin() {
+    return jdbcTemplate.query(
+        """
+        SELECT r.id, r.booking_id::text, r.student_id::text, student_user.name AS student_name,
+               r.tutor_id::text, tutor_user.name AS tutor_name, COALESCE(b.subject, '') AS subject,
+               r.rating, COALESCE(r.comment, '') AS comment, r.created_at::text
+        FROM reviews r
+        JOIN users student_user ON student_user.id = r.student_id
+        JOIN users tutor_user ON tutor_user.id = r.tutor_id
+        LEFT JOIN bookings b ON b.id = r.booking_id
+        ORDER BY r.created_at DESC
+        """,
+        this::mapReviewRecord);
+  }
+
+  public boolean deleteReviewById(String reviewId) {
+    int rows = jdbcTemplate.update("DELETE FROM reviews WHERE id = CAST(? AS uuid)", reviewId);
+    return rows > 0;
+  }
+
+  public void createAuditLog(String actorId, String action, String entityType, String entityId, String details) {
+    jdbcTemplate.update(
+        """
+        INSERT INTO audit_logs (id, actor_id, action, entity_type, entity_id, details)
+        VALUES (gen_random_uuid(), CAST(? AS uuid), ?, ?, CAST(? AS uuid), ?)
+        """,
+        actorId,
+        action,
+        entityType,
+        entityId,
+        details);
   }
 
   public boolean updateBookingStatus(String bookingId, String status) {
@@ -574,6 +676,58 @@ public class UserRepository {
             rs.getString("receipt_no"),
             rs.getString("paid_at")),
         id);
+  }
+
+  public PaymentRecord createSlipPayment(
+      String bookingId,
+      String studentId,
+      java.math.BigDecimal amount,
+      String receiptNo,
+      String slipFileName,
+      String slipContentType,
+      byte[] slipData) {
+    String id = UUID.randomUUID().toString();
+    jdbcTemplate.update(
+        """
+        INSERT INTO payments (
+          id, booking_id, student_id, amount, status, receipt_no,
+          slip_file_name, slip_content_type, slip_data, slip_uploaded_at
+        )
+        VALUES (
+          CAST(? AS uuid), CAST(? AS uuid), CAST(? AS uuid), ?, 'PendingApproval', ?,
+          ?, ?, ?, CURRENT_TIMESTAMP
+        )
+        """,
+        id,
+        bookingId,
+        studentId,
+        amount,
+        receiptNo,
+        slipFileName,
+        slipContentType,
+        slipData);
+
+    return findPaymentById(id).orElseThrow();
+  }
+
+  public Optional<PaymentRecord> findPaymentById(String paymentId) {
+    return jdbcTemplate.query(
+        """
+        SELECT id, booking_id::text, student_id::text, amount, status, receipt_no, paid_at::text
+        FROM payments
+        WHERE id = CAST(? AS uuid)
+        """,
+        (rs, rowNum) -> new PaymentRecord(
+            rs.getString("id"),
+            rs.getString("booking_id"),
+            rs.getString("student_id"),
+            rs.getBigDecimal("amount"),
+            rs.getString("status"),
+            rs.getString("receipt_no"),
+            rs.getString("paid_at")),
+        paymentId)
+        .stream()
+        .findFirst();
   }
 
   public ReceiptRecord createReceipt(
@@ -653,6 +807,241 @@ public class UserRepository {
         studentId);
   }
 
+  public List<PaymentApprovalRecord> findPendingSlipPaymentsForAdmin() {
+    return jdbcTemplate.query(
+        """
+        SELECT p.id::text, p.booking_id::text, p.student_id::text, p.amount, p.status,
+               p.receipt_no, p.created_at::text, COALESCE(p.slip_uploaded_at::text, '') AS slip_uploaded_at,
+               COALESCE(p.slip_file_name, '') AS slip_file_name,
+               COALESCE(p.slip_content_type, '') AS slip_content_type,
+               b.subject, b.session_date::text, b.status AS booking_status,
+               COALESCE(s.start_time::text, '') AS start_time,
+               COALESCE(s.end_time::text, '') AS end_time,
+               student_user.name AS student_name,
+               tutor_user.name AS tutor_name
+        FROM payments p
+        JOIN bookings b ON b.id = p.booking_id
+        JOIN users student_user ON student_user.id = b.student_id
+        JOIN users tutor_user ON tutor_user.id = b.tutor_id
+        LEFT JOIN availability_slots s ON s.id = b.slot_id
+        WHERE p.status = 'PendingApproval'
+        ORDER BY COALESCE(p.slip_uploaded_at, p.created_at) DESC
+        """,
+        this::mapPaymentApprovalRecord);
+  }
+
+  public Optional<PaymentApprovalRecord> findPaymentApprovalById(String paymentId) {
+    return jdbcTemplate.query(
+        """
+        SELECT p.id::text, p.booking_id::text, p.student_id::text, p.amount, p.status,
+               p.receipt_no, p.created_at::text, COALESCE(p.slip_uploaded_at::text, '') AS slip_uploaded_at,
+               COALESCE(p.slip_file_name, '') AS slip_file_name,
+               COALESCE(p.slip_content_type, '') AS slip_content_type,
+               b.subject, b.session_date::text, b.status AS booking_status,
+               COALESCE(s.start_time::text, '') AS start_time,
+               COALESCE(s.end_time::text, '') AS end_time,
+               student_user.name AS student_name,
+               tutor_user.name AS tutor_name
+        FROM payments p
+        JOIN bookings b ON b.id = p.booking_id
+        JOIN users student_user ON student_user.id = b.student_id
+        JOIN users tutor_user ON tutor_user.id = b.tutor_id
+        LEFT JOIN availability_slots s ON s.id = b.slot_id
+        WHERE p.id = CAST(? AS uuid)
+        """,
+        this::mapPaymentApprovalRecord,
+        paymentId)
+        .stream()
+        .findFirst();
+  }
+
+  public Optional<PaymentSlipRecord> findPaymentSlipById(String paymentId) {
+    return jdbcTemplate.query(
+        """
+        SELECT id::text, COALESCE(slip_file_name, 'payment-slip') AS slip_file_name,
+               COALESCE(slip_content_type, 'application/octet-stream') AS slip_content_type,
+               slip_data
+        FROM payments
+        WHERE id = CAST(? AS uuid)
+          AND slip_data IS NOT NULL
+        """,
+        (rs, rowNum) -> new PaymentSlipRecord(
+            rs.getString("id"),
+            rs.getString("slip_file_name"),
+            rs.getString("slip_content_type"),
+            rs.getBytes("slip_data")),
+        paymentId)
+        .stream()
+        .findFirst();
+  }
+
+  public boolean approveSlipPayment(String paymentId, String adminId) {
+    int rows = jdbcTemplate.update(
+        """
+        UPDATE payments
+        SET status = 'Completed',
+            paid_at = CURRENT_TIMESTAMP,
+            approved_by = CAST(? AS uuid),
+            approved_at = CURRENT_TIMESTAMP
+        WHERE id = CAST(? AS uuid)
+          AND status = 'PendingApproval'
+        """,
+        adminId,
+        paymentId);
+    return rows > 0;
+  }
+
+  public boolean rejectSlipPayment(String paymentId, String adminId) {
+    int rows = jdbcTemplate.update(
+        """
+        UPDATE payments
+        SET status = 'Rejected',
+            approved_by = CAST(? AS uuid),
+            approved_at = CURRENT_TIMESTAMP
+        WHERE id = CAST(? AS uuid)
+          AND status = 'PendingApproval'
+        """,
+        adminId,
+        paymentId);
+    return rows > 0;
+  }
+
+  public List<AdminStudentRecord> findStudentsForAdmin() {
+    return jdbcTemplate.query(
+        """
+        SELECT u.id::text, u.name, u.email, COALESCE(u.bio, '') AS bio,
+               COALESCE(u.status, 'Active') AS status, u.created_at::text,
+               COALESCE(bs.session_count, 0) AS session_count,
+               COALESCE(bs.completed_sessions, 0) AS completed_sessions,
+               COALESCE(ps.total_spent, 0) AS total_spent
+        FROM users u
+        LEFT JOIN (
+          SELECT student_id, COUNT(*) AS session_count,
+                 COUNT(*) FILTER (WHERE status = 'Completed') AS completed_sessions
+          FROM bookings
+          GROUP BY student_id
+        ) bs ON bs.student_id = u.id
+        LEFT JOIN (
+          SELECT student_id, COALESCE(SUM(amount), 0) AS total_spent
+          FROM payments
+          WHERE status IN ('Completed', 'Paid')
+          GROUP BY student_id
+        ) ps ON ps.student_id = u.id
+        WHERE u.role = 'Student'
+        ORDER BY u.name
+        """,
+        (rs, rowNum) -> new AdminStudentRecord(
+            rs.getString("id"),
+            rs.getString("name"),
+            rs.getString("email"),
+            rs.getString("bio"),
+            rs.getString("status"),
+            rs.getString("created_at"),
+            rs.getInt("session_count"),
+            rs.getInt("completed_sessions"),
+            rs.getBigDecimal("total_spent")));
+  }
+
+  public List<AdminTutorRecord> findTutorsForAdmin() {
+    return jdbcTemplate.query(
+        """
+        SELECT u.id::text, u.name, u.email, COALESCE(u.bio, '') AS bio,
+               u.hourly_rate, COALESCE(u.status, 'Active') AS status, u.created_at::text,
+               COALESCE(ss.subject_count, 0) AS subject_count,
+               COALESCE(av.slot_count, 0) AS slot_count,
+               COALESCE(bs.session_count, 0) AS session_count,
+               COALESCE(bs.completed_sessions, 0) AS completed_sessions,
+               COALESCE(es.total_earned, 0) AS total_earned
+        FROM users u
+        LEFT JOIN (
+          SELECT tutor_id, COUNT(*) AS subject_count
+          FROM subjects
+          WHERE is_active = TRUE
+          GROUP BY tutor_id
+        ) ss ON ss.tutor_id = u.id
+        LEFT JOIN (
+          SELECT tutor_id, COUNT(*) FILTER (WHERE status <> 'cancelled') AS slot_count
+          FROM availability_slots
+          GROUP BY tutor_id
+        ) av ON av.tutor_id = u.id
+        LEFT JOIN (
+          SELECT tutor_id, COUNT(*) AS session_count,
+                 COUNT(*) FILTER (WHERE status = 'Completed') AS completed_sessions
+          FROM bookings
+          GROUP BY tutor_id
+        ) bs ON bs.tutor_id = u.id
+        LEFT JOIN (
+          SELECT b.tutor_id, COALESCE(SUM(p.amount), 0) AS total_earned
+          FROM bookings b
+          JOIN payments p ON p.booking_id = b.id
+          WHERE p.status IN ('Completed', 'Paid')
+          GROUP BY b.tutor_id
+        ) es ON es.tutor_id = u.id
+        WHERE u.role = 'Tutor'
+        ORDER BY
+          CASE COALESCE(u.status, 'Active') WHEN 'Suspended' THEN 1 ELSE 0 END,
+          u.name
+        """,
+        this::mapAdminTutorRecord);
+  }
+
+  public Optional<AdminTutorRecord> findTutorForAdmin(String tutorId) {
+    return jdbcTemplate.query(
+        """
+        SELECT u.id::text, u.name, u.email, COALESCE(u.bio, '') AS bio,
+               u.hourly_rate, COALESCE(u.status, 'Active') AS status, u.created_at::text,
+               COALESCE(ss.subject_count, 0) AS subject_count,
+               COALESCE(av.slot_count, 0) AS slot_count,
+               COALESCE(bs.session_count, 0) AS session_count,
+               COALESCE(bs.completed_sessions, 0) AS completed_sessions,
+               COALESCE(es.total_earned, 0) AS total_earned
+        FROM users u
+        LEFT JOIN (
+          SELECT tutor_id, COUNT(*) AS subject_count
+          FROM subjects
+          WHERE is_active = TRUE
+          GROUP BY tutor_id
+        ) ss ON ss.tutor_id = u.id
+        LEFT JOIN (
+          SELECT tutor_id, COUNT(*) FILTER (WHERE status <> 'cancelled') AS slot_count
+          FROM availability_slots
+          GROUP BY tutor_id
+        ) av ON av.tutor_id = u.id
+        LEFT JOIN (
+          SELECT tutor_id, COUNT(*) AS session_count,
+                 COUNT(*) FILTER (WHERE status = 'Completed') AS completed_sessions
+          FROM bookings
+          GROUP BY tutor_id
+        ) bs ON bs.tutor_id = u.id
+        LEFT JOIN (
+          SELECT b.tutor_id, COALESCE(SUM(p.amount), 0) AS total_earned
+          FROM bookings b
+          JOIN payments p ON p.booking_id = b.id
+          WHERE p.status IN ('Completed', 'Paid')
+          GROUP BY b.tutor_id
+        ) es ON es.tutor_id = u.id
+        WHERE u.id = CAST(? AS uuid)
+          AND u.role = 'Tutor'
+        """,
+        this::mapAdminTutorRecord,
+        tutorId)
+        .stream()
+        .findFirst();
+  }
+
+  public boolean updateTutorStatus(String tutorId, String status) {
+    int rows = jdbcTemplate.update(
+        """
+        UPDATE users
+        SET status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = CAST(? AS uuid)
+          AND role = 'Tutor'
+        """,
+        status,
+        tutorId);
+    return rows > 0;
+  }
+
   private SessionRecord mapSessionRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
     return new SessionRecord(
         rs.getString("id"),
@@ -662,6 +1051,10 @@ public class UserRepository {
         rs.getString("tutor_id"),
         rs.getString("tutor_name"),
         rs.getBigDecimal("hourly_rate"),
+        rs.getBigDecimal("session_price"),
+        rs.getString("payment_id"),
+        rs.getString("payment_status"),
+        rs.getString("slip_file_name"),
         rs.getString("subject"),
         rs.getString("status"),
         rs.getString("session_date"),
@@ -679,9 +1072,50 @@ public class UserRepository {
         rs.getString("student_id"),
         rs.getString("student_name"),
         rs.getString("tutor_id"),
+        rs.getString("tutor_name"),
+        rs.getString("subject"),
         rs.getInt("rating"),
         rs.getString("comment"),
         rs.getString("created_at"));
+  }
+
+  private AdminTutorRecord mapAdminTutorRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+    return new AdminTutorRecord(
+        rs.getString("id"),
+        rs.getString("name"),
+        rs.getString("email"),
+        rs.getString("bio"),
+        rs.getBigDecimal("hourly_rate"),
+        rs.getString("status"),
+        rs.getString("created_at"),
+        rs.getInt("subject_count"),
+        rs.getInt("slot_count"),
+        rs.getInt("session_count"),
+        rs.getInt("completed_sessions"),
+        rs.getBigDecimal("total_earned"));
+  }
+
+  private PaymentApprovalRecord mapPaymentApprovalRecord(
+      java.sql.ResultSet rs,
+      int rowNum) throws java.sql.SQLException {
+    return new PaymentApprovalRecord(
+        rs.getString("id"),
+        rs.getString("booking_id"),
+        rs.getString("student_id"),
+        rs.getBigDecimal("amount"),
+        rs.getString("status"),
+        rs.getString("receipt_no"),
+        rs.getString("created_at"),
+        rs.getString("slip_uploaded_at"),
+        rs.getString("slip_file_name"),
+        rs.getString("slip_content_type"),
+        rs.getString("subject"),
+        rs.getString("session_date"),
+        rs.getString("start_time"),
+        rs.getString("end_time"),
+        rs.getString("student_name"),
+        rs.getString("tutor_name"),
+        rs.getString("booking_status"));
   }
 
   public void replaceAvailabilitySlots(String tutorId, List<AvailabilitySlotRecord> slots) {
@@ -714,7 +1148,14 @@ public class UserRepository {
     }
   }
 
-  public record UserRecord(String id, String name, String email, String passwordHash, String role, String bio) {
+  public record UserRecord(
+      String id,
+      String name,
+      String email,
+      String passwordHash,
+      String role,
+      String bio,
+      String status) {
   }
 
   public record TutorRecord(
@@ -723,7 +1164,8 @@ public class UserRepository {
       String email,
       String role,
       String bio,
-      java.math.BigDecimal hourlyRate) {
+      java.math.BigDecimal hourlyRate,
+      String status) {
   }
 
   public record SubjectRecord(String id, String name, String description, String gradeLevel) {
@@ -755,6 +1197,10 @@ public class UserRepository {
       String tutorId,
       String tutorName,
       java.math.BigDecimal hourlyRate,
+      java.math.BigDecimal sessionPrice,
+      String paymentId,
+      String paymentStatus,
+      String slipFileName,
       String subject,
       String status,
       String sessionDate,
@@ -771,6 +1217,8 @@ public class UserRepository {
       String studentId,
       String studentName,
       String tutorId,
+      String tutorName,
+      String subject,
       int rating,
       String comment,
       String createdAt) {
@@ -814,5 +1262,59 @@ public class UserRepository {
       String receiptId,
       String generatedReceiptNo,
       String issuedAt) {
+  }
+
+  public record PaymentApprovalRecord(
+      String id,
+      String bookingId,
+      String studentId,
+      java.math.BigDecimal amount,
+      String status,
+      String receiptNo,
+      String createdAt,
+      String slipUploadedAt,
+      String slipFileName,
+      String slipContentType,
+      String subject,
+      String sessionDate,
+      String startTime,
+      String endTime,
+      String studentName,
+      String tutorName,
+      String bookingStatus) {
+  }
+
+  public record PaymentSlipRecord(
+      String id,
+      String fileName,
+      String contentType,
+      byte[] data) {
+  }
+
+  public record AdminStudentRecord(
+      String id,
+      String name,
+      String email,
+      String bio,
+      String status,
+      String createdAt,
+      int sessionCount,
+      int completedSessions,
+      java.math.BigDecimal totalSpent) {
+  }
+
+  public record AdminTutorRecord(
+      String id,
+      String name,
+      String email,
+      String bio,
+      java.math.BigDecimal hourlyRate,
+      String status,
+      String createdAt,
+      int subjectCount,
+      int slotCount,
+      int sessionCount,
+      int completedSessions,
+      java.math.BigDecimal totalEarned) {
   }
 }

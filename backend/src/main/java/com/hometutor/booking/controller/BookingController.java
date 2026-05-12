@@ -2,6 +2,7 @@ package com.hometutor.booking.controller;
 
 import com.hometutor.auth.service.AuthService;
 import com.hometutor.booking.dto.CreateBookingRequest;
+import com.hometutor.booking.dto.SetSessionPriceRequest;
 import com.hometutor.booking.service.BookingService;
 import jakarta.validation.Valid;
 import java.util.Map;
@@ -35,14 +36,14 @@ public class BookingController {
     return ResponseEntity.status(HttpStatus.CREATED).body(bookingService.createBooking(userId, request));
   }
 
-  @GetMapping("/mine")
+  @GetMapping({"/mine", "/my"})
   public ResponseEntity<Map<String, Object>> getMySessions(
       @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
     String userId = authService.requireUserId(authorizationHeader);
     return ResponseEntity.ok(bookingService.getMySessions(userId));
   }
 
-  @GetMapping("/{bookingId}")
+  @GetMapping("/{bookingId:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}")
   public ResponseEntity<Map<String, Object>> getMySession(
       @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
       @PathVariable String bookingId) {
@@ -50,11 +51,20 @@ public class BookingController {
     return ResponseEntity.ok(bookingService.getMySession(userId, bookingId));
   }
 
-  @PatchMapping("/{bookingId}/cancel")
+  @PatchMapping("/{bookingId:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/cancel")
   public ResponseEntity<Map<String, Object>> cancelBooking(
       @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
       @PathVariable String bookingId) {
     String userId = authService.requireUserId(authorizationHeader);
     return ResponseEntity.ok(bookingService.cancelBooking(userId, bookingId));
+  }
+
+  @PatchMapping("/{bookingId:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/price")
+  public ResponseEntity<Map<String, Object>> setSessionPrice(
+      @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+      @PathVariable String bookingId,
+      @Valid @RequestBody SetSessionPriceRequest request) {
+    String userId = authService.requireUserId(authorizationHeader);
+    return ResponseEntity.ok(bookingService.setSessionPrice(userId, bookingId, request));
   }
 }

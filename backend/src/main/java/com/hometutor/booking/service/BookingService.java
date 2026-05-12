@@ -1,6 +1,7 @@
 package com.hometutor.booking.service;
 
 import com.hometutor.booking.dto.CreateBookingRequest;
+import com.hometutor.booking.dto.SetSessionPriceRequest;
 import com.hometutor.booking.exception.BookingCancellationException;
 import com.hometutor.booking.exception.BookingNotFoundException;
 import com.hometutor.booking.exception.SlotUnavailableException;
@@ -118,6 +119,30 @@ public class BookingService {
         "session", toMap(cancelledSession, user.role()));
   }
 
+  public Map<String, Object> setSessionPrice(String userId, String bookingId, SetSessionPriceRequest request) {
+    UserRecord user = userRepository.findById(userId)
+        .orElseThrow(BookingNotFoundException::new);
+
+    if (!"Tutor".equals(user.role())) {
+      throw new BookingCancellationException("Only tutors can set session prices");
+    }
+
+    if ("Suspended".equals(user.status())) {
+      throw new BookingCancellationException("Suspended tutors cannot set session prices");
+    }
+
+    if (!userRepository.updateSessionPriceForTutor(user.id(), bookingId, request.getPrice())) {
+      throw new BookingNotFoundException();
+    }
+
+    SessionRecord session = userRepository.findSessionByIdForUser(user.id(), user.role(), bookingId)
+        .orElseThrow(BookingNotFoundException::new);
+
+    return Map.of(
+        "message", "Session price updated",
+        "session", toMap(session, user.role()));
+  }
+
   private LocalDate nextDateFor(String dayName) {
     DayOfWeek targetDay = DayOfWeek.valueOf(dayName.toUpperCase(Locale.ROOT));
     LocalDate today = LocalDate.now();
@@ -155,6 +180,10 @@ public class BookingService {
     data.put("tutorId", session.tutorId());
     data.put("tutorName", session.tutorName());
     data.put("amountDue", session.hourlyRate());
+    data.put("sessionPrice", session.sessionPrice());
+    data.put("paymentId", session.paymentId() == null ? "" : session.paymentId());
+    data.put("paymentStatus", session.paymentStatus() == null ? "" : session.paymentStatus());
+    data.put("slipFileName", session.slipFileName() == null ? "" : session.slipFileName());
     data.put("subject", session.subject());
     data.put("status", session.status());
     data.put("sessionDate", session.sessionDate());

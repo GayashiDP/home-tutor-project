@@ -1,128 +1,134 @@
-import { Link, Navigate } from 'react-router-dom';
-import Navbar from '../../components/Navbar';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
-export default function DashboardPage({ role }) {
-  const { user, logout } = useAuth();
-  const isTutor = role === 'Tutor';
+const ACTIONS = {
+  Student: [
+    { title: 'Browse Tutors', description: 'Search and compare tutors by subject, rating, and rate.', path: '/tutors', icon: '🎓', tone: 'blue' },
+    { title: 'My Profile', description: 'Keep your student profile and preferences up to date.', path: '/profile', icon: '👤', tone: 'mint' },
+    { title: 'My Sessions', description: 'View upcoming, past, and completed lesson sessions.', path: '/sessions', icon: '📚', tone: 'violet' },
+    { title: 'Payments', description: 'View your transaction history and download receipts.', path: '/transactions', icon: '💳', tone: 'amber' },
+  ],
+  Tutor: [
+    { title: 'My Profile', description: 'Update your public tutor bio and personal information.', path: '/profile', icon: '👤', tone: 'mint' },
+    { title: 'Subjects', description: 'Add or manage the subjects you teach on the platform.', path: '/tutor/subjects', icon: '📖', tone: 'blue' },
+    { title: 'Availability', description: 'Set your weekly bookable time slots for students.', path: '/tutor/availability', icon: '🗓️', tone: 'amber' },
+    { title: 'Sessions', description: 'View upcoming and past student lesson sessions.', path: '/sessions', icon: '📚', tone: 'violet' },
+  ],
+  Admin: [
+    { title: 'User Management', description: 'Review students, tutor earnings, and suspend tutor accounts.', path: '/admin/users', icon: '👥', tone: 'blue' },
+    { title: 'Payment Approvals', description: 'Review uploaded payment slips and approve session payments.', path: '/admin/payments', icon: '💳', tone: 'amber' },
+    { title: 'Review Moderation', description: 'Moderate student reviews and maintain platform quality.', path: '/admin/reviews', icon: '⭐', tone: 'violet' },
+  ],
+};
 
-  const quickStats = isTutor
-    ? [
-        { label: 'Listing', value: 'Live', detail: 'Tutor profile active', icon: '✓', color: 'green' },
-        { label: 'Schedule', value: 'Weekly', detail: 'Manage bookable slots', icon: '📅', color: 'blue' },
-        { label: 'Bookings', value: 'Pending', detail: 'Review student requests', icon: '📋', color: 'purple' },
-      ]
-    : [
-        { label: 'Tutors', value: '500+', detail: 'Browse our collection', icon: '👥', color: 'blue' },
-        { label: 'Bookings', value: 'Ready', detail: 'Schedule your sessions', icon: '📅', color: 'green' },
-        { label: 'Sessions', value: 'Secure', detail: 'Protected learning space', icon: '🔒', color: 'purple' },
-      ];
+const ROLE_META = {
+  Student: {
+    label: 'Student workspace',
+    headline: 'Plan your next lesson with confidence',
+    description: 'Find expert tutors, manage upcoming lessons, and keep every payment receipt in one calm workspace.',
+    heroIcon: '🌿',
+    metrics: [
+      ['Focus', 'Tutor discovery'],
+      ['Next step', 'Book a session'],
+      ['Tools', 'Sessions & receipts'],
+    ],
+  },
+  Tutor: {
+    label: 'Tutor studio',
+    headline: 'Manage your teaching schedule beautifully',
+    description: 'Refresh your profile, update subjects, open availability, and keep student sessions organized.',
+    heroIcon: '📘',
+    metrics: [
+      ['Focus', 'Availability'],
+      ['Next step', 'Open new slots'],
+      ['Tools', 'Subjects & sessions'],
+    ],
+  },
+  Admin: {
+    label: 'Admin command center',
+    headline: 'Keep the tutoring platform trusted',
+    description: 'Review users, approve payments, and moderate feedback with a clean quality-control dashboard.',
+    heroIcon: '🛡️',
+    metrics: [
+      ['Focus', 'Quality control'],
+      ['Next step', 'Review queues'],
+      ['Tools', 'Users, payments, reviews'],
+    ],
+  },
+};
 
-  const actionCards = isTutor ? [
-    { title: 'Profile', description: 'View and update your details', path: '/profile', icon: '👤' },
-    { title: 'Subjects', description: 'Manage your tutor listing', path: '/tutor/subjects', icon: '📚' },
-    { title: 'Availability', description: 'Set your weekly schedule', path: '/tutor/availability', icon: '📆' },
-    { title: 'Bookings', description: 'View student bookings', path: '/tutor/bookings', icon: '📝' },
-  ] : [
-    { title: 'Browse Tutors', description: 'Find your next tutor', path: '/tutors', icon: '🔍' },
-    { title: 'Profile', description: 'Manage your profile', path: '/profile', icon: '👤' },
-    { title: 'My Bookings', description: 'View your sessions', path: '/student/bookings', icon: '📅' },
-    { title: 'Payments', description: 'View transactions', path: '/student/payments', icon: '💳' },
-  ];
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  if (!user) return null;
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (user.role !== role) {
-    const redirectPath = user.role === 'Tutor' ? '/tutor/dashboard' : '/student/dashboard';
-    return <Navigate to={redirectPath} replace />;
-  }
+  const actions = ACTIONS[user.role] || [];
+  const meta = ROLE_META[user.role] || ROLE_META.Student;
+  const displayName = user.name || user.fullName || 'User';
+  const firstName = displayName.split(' ')[0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <Navbar />
-
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        {/* Welcome Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div>
-              <p className="text-blue-600 text-sm font-semibold uppercase tracking-wide">Welcome Back</p>
-              <h1 className="text-4xl font-bold text-gray-900 mt-2">Hi, {user.name}! 👋</h1>
-              <p className="text-gray-600 mt-2 text-lg">
-                {isTutor
-                  ? 'Manage your tutoring sessions and profile from here.'
-                  : 'Find amazing tutors and book your sessions here.'}
-              </p>
+    <div className={`page dashboard-page role-${String(user.role).toLowerCase()}`}>
+      <div className="container section">
+        <div className="dashboard-shell">
+          <div className="dashboard-hero dashboard-hero-polished">
+            <div className="dashboard-hero-copy">
+              <div className="dashboard-kicker"><span>{meta.heroIcon}</span>{meta.label}</div>
+              <h1>Hi, {firstName} 👋</h1>
+              <p>{meta.description}</p>
+              <div className="dashboard-hero-actions">
+                <button className="btn btn-secondary btn-sm" onClick={() => navigate(actions[0]?.path || '/profile')}>Start work</button>
+                <button className="btn btn-outline-light btn-sm" onClick={() => navigate('/profile')}>View profile</button>
+              </div>
             </div>
-            <div className="bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl p-6 w-full md:w-auto">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                  {user.name?.charAt(0)?.toUpperCase() || 'U'}
-                </div>
+
+            <div className="dashboard-profile-card">
+              <div className="dashboard-profile-top">
+                <div className="user-pill-avatar">{displayName.charAt(0)}</div>
                 <div>
-                  <p className="font-semibold text-gray-900">{user.name}</p>
-                  <p className="text-sm text-gray-600">{user.role}</p>
-                  <p className="text-xs text-gray-500 mt-1">{user.email}</p>
+                  <strong>{displayName}</strong>
+                  <span>{user.role}</span>
                 </div>
+              </div>
+              <div className="dashboard-profile-email">{user.email || 'Profile ready'}</div>
+              <div className="dashboard-profile-status">
+                <span className="status-dot" /> Active workspace
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {quickStats.map((stat) => (
-            <div key={stat.label} className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
-              <div className="flex items-start justify-between mb-4">
-                <div className={`text-3xl w-12 h-12 rounded-lg flex items-center justify-center ${
-                  stat.color === 'green' ? 'bg-green-100' :
-                  stat.color === 'blue' ? 'bg-blue-100' :
-                  'bg-purple-100'
-                }`}>
-                  {stat.icon}
+          <div className="dashboard-insights">
+            {meta.metrics.map(([label, value], index) => (
+              <div key={label} className="dashboard-insight-card">
+                <div className="insight-number">0{index + 1}</div>
+                <div>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
                 </div>
               </div>
-              <p className="text-gray-600 text-sm font-medium">{stat.label}</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-              <p className="text-gray-500 text-xs mt-2">{stat.detail}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Action Cards Grid */}
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {actionCards.map((card) => (
-              <Link
-                key={card.path}
-                to={card.path}
-                className="bg-white rounded-xl shadow-md p-6 hover:shadow-xl transform hover:-translate-y-1 transition duration-300 group"
-              >
-                <div className="text-4xl mb-4 group-hover:scale-110 transition">{card.icon}</div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition">
-                  {card.title}
-                </h3>
-                <p className="text-gray-600 text-sm">{card.description}</p>
-                <div className="mt-4 flex items-center text-blue-600 font-semibold text-sm group-hover:gap-2 transition">
-                  <span>Explore</span>
-                  <span>→</span>
-                </div>
-              </Link>
             ))}
           </div>
-        </div>
 
-        {/* Logout Button */}
-        <div className="mt-12 flex justify-center">
-          <button
-            onClick={logout}
-            className="px-6 py-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition font-semibold"
-          >
-            Logout
-          </button>
+          <div className="section-header dashboard-section-header">
+            <div>
+              <div className="ribbon ribbon-soft">{meta.headline}</div>
+              <h2 className="section-title">Quick Actions</h2>
+            </div>
+          </div>
+
+          <div className="action-grid action-grid-polished">
+            {actions.map((a, index) => (
+              <button key={a.path} className={`action-card action-card-${a.tone}`} onClick={() => navigate(a.path)}>
+                <div className="action-card-topline">
+                  <div className="action-icon">{a.icon}</div>
+                  <span>0{index + 1}</span>
+                </div>
+                <strong>{a.title}</strong>
+                <p>{a.description}</p>
+                <div className="action-go">Open workspace →</div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

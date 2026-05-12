@@ -1,354 +1,104 @@
-import axios from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
-import Navbar from '../../components/Navbar';
-import { useAuth } from '../../hooks/useAuth';
-import { cancelBooking, getMySessions } from '../../services/bookingService';
-
-const tabs = ['Upcoming', 'Past'];
-
-const formatDateTime = (session) => {
-  const date = new Date(`${session.sessionDate}T00:00:00`);
-  const formattedDate = new Intl.DateTimeFormat(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(date);
-  const time = session.startTime && session.endTime
-    ? `${session.startTime}-${session.endTime}`
-    : 'Time unavailable';
-
-  return `${formattedDate} · ${time}`;
-};
-
-const isPastSession = (session) => {
-  if (['Completed', 'Cancelled'].includes(session.status)) {
-    return true;
-  }
-
-  const endTime = session.endTime || '23:59';
-  return new Date(`${session.sessionDate}T${endTime}:00`) < new Date();
-};
-
-export default function MySessionsPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [sessions, setSessions] = useState([]);
-  const [selectedTab, setSelectedTab] = useState('Upcoming');
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [sessionToCancel, setSessionToCancel] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [cancelling, setCancelling] = useState(false);
-  const [error, setError] = useState('');
-  const [actionError, setActionError] = useState('');
-
-  const loadSessions = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await getMySessions();
-      setSessions(response.data.sessions || []);
-    } catch (err) {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.error || 'Unable to load sessions'
-        : 'Unable to load sessions';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      queueMicrotask(loadSessions);
-    }
-  }, [loadSessions, user]);
-
-  const groupedSessions = useMemo(() => {
-    const upcoming = [];
-    const past = [];
-
-    sessions.forEach((session) => {
-      if (isPastSession(session)) {
-        past.push(session);
-      } else {
-        upcoming.push(session);
-      }
-    });
-
-    upcoming.sort((a, b) => new Date(`${a.sessionDate}T${a.startTime || '00:00'}:00`) - new Date(`${b.sessionDate}T${b.startTime || '00:00'}:00`));
-    past.sort((a, b) => new Date(`${b.sessionDate}T${b.startTime || '00:00'}:00`) - new Date(`${a.sessionDate}T${a.startTime || '00:00'}:00`));
-
-    return { Upcoming: upcoming, Past: past };
-  }, [sessions]);
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const dashboardPath = user.role === 'Tutor' ? '/tutor/dashboard' : '/student/dashboard';
-  const visibleSessions = groupedSessions[selectedTab];
-  const participantLabel = user.role === 'Tutor' ? 'Student' : 'Tutor';
-  const canCancelSelectedSession = Boolean(
-    selectedSession
-      && user.role === 'Student'
-      && !isPastSession(selectedSession)
-      && ['Pending', 'Confirmed'].includes(selectedSession.status),
-  );
-  const canPaySelectedSession = Boolean(
-    selectedSession
-      && user.role === 'Student'
-      && selectedSession.status === 'Pending'
-      && !isPastSession(selectedSession),
-  );
-
-  const handleCancelBooking = async () => {
-    if (!sessionToCancel) {
-      return;
-    }
-
-    try {
-      setCancelling(true);
-      setActionError('');
-      const response = await cancelBooking(sessionToCancel.id);
-      const cancelledSession = response.data.session;
-      setSessions((current) => current.map((session) => (
-        session.id === cancelledSession.id ? cancelledSession : session
-      )));
-      setSelectedSession(cancelledSession);
-      setSessionToCancel(null);
-      setSelectedTab('Past');
-    } catch (err) {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.error || 'Unable to cancel booking'
-        : 'Unable to cancel booking';
-      setActionError(message);
-    } finally {
-      setCancelling(false);
-    }
-  };
-
-  return (
-    <main className="sessions-page">
-      <Navbar />
-
-      <section className="sessions-shell" aria-labelledby="sessions-heading">
-        <div className="profile-topbar">
-          <Link to={dashboardPath}>Back to Dashboard</Link>
-          <Link to={user.role === 'Student' ? '/tutors' : '/tutor/availability'}>
-            {user.role === 'Student' ? 'Find Tutors' : 'Availability'}
-          </Link>
-        </div>
-
-        <header className="subject-manager-header">
-          <p className="eyebrow">Lesson Tracker</p>
-          <h1 id="sessions-heading">My Sessions</h1>
-          <p>Review upcoming requests, confirmed lessons, and past session history.</p>
-        </header>
-
-        <section className="sessions-summary" aria-label="Session summary">
-          <article>
-            <span>Upcoming</span>
-            <strong>{groupedSessions.Upcoming.length}</strong>
-          </article>
-          <article>
-            <span>Past</span>
-            <strong>{groupedSessions.Past.length}</strong>
-          </article>
-          <article>
-            <span>Total</span>
-            <strong>{sessions.length}</strong>
-          </article>
-        </section>
-
-        <div className="sessions-tabs" role="tablist" aria-label="Session groups">
-          {tabs.map((tab) => (
-            <button
-              type="button"
-              className={selectedTab === tab ? 'sessions-tab active' : 'sessions-tab'}
-              key={tab}
-              onClick={() => setSelectedTab(tab)}
-              role="tab"
-              aria-selected={selectedTab === tab}
-            >
-              {tab}
-              <span>{groupedSessions[tab].length}</span>
-            </button>
+import {useState,useEffect,useMemo} from 'react';
+import {useNavigate} from 'react-router-dom';
+import {useAuth} from '../../hooks/useAuth';
+import StatusBadge from '../../components/common/StatusBadge';
+import Stars from '../../components/common/Stars';
+import api from '../../services/api';
+const fmtCurr=n=>new Intl.NumberFormat('en',{style:'currency',currency:'USD'}).format(Number(n)||0);
+const fmtDT=s=>{const d=new Intl.DateTimeFormat('en',{weekday:'short',month:'short',day:'numeric'}).format(new Date(`${s.sessionDate}T00:00:00`));return`${d} · ${s.startTime}–${s.endTime}`;};
+const isPast=s=>['Completed','Cancelled'].includes(s.status)||new Date(`${s.sessionDate}T${s.endTime||'23:59'}`)< new Date();
+const DEMO=[
+  {id:'b1',subject:'Algebra',sessionDate:'2026-05-10',startTime:'10:00',endTime:'11:00',status:'Confirmed',tutorName:'Sarah Johnson',studentName:'Jordan Kim',note:'Focus on quadratic equations.',amountDue:45},
+  {id:'b2',subject:'Physics',sessionDate:'2026-05-12',startTime:'14:00',endTime:'15:00',status:'Pending',tutorName:'Emma Wilson',studentName:'Jordan Kim',note:'',amountDue:50},
+  {id:'b3',subject:'Python',sessionDate:'2026-04-20',startTime:'09:00',endTime:'10:00',status:'Completed',tutorName:'David Kumar',studentName:'Jordan Kim',note:'Covered list comprehensions.',reviewed:true,amountDue:55,paymentStatus:'Completed'},
+  {id:'b4',subject:'English',sessionDate:'2026-04-15',startTime:'11:00',endTime:'12:00',status:'Cancelled',tutorName:'Mike Chen',studentName:'Jordan Kim',note:'',amountDue:40},
+  {id:'b5',subject:'Calculus',sessionDate:'2026-04-25',startTime:'15:00',endTime:'16:00',status:'Completed',tutorName:'Sarah Johnson',studentName:'Jordan Kim',note:'Integration techniques.',reviewed:false,amountDue:45,paymentStatus:'Completed'},
+];
+const normalizeSessions=data=>Array.isArray(data)?data:Array.isArray(data?.sessions)?data.sessions:DEMO;
+export default function MySessionsPage(){
+  const {user}=useAuth(); const navigate=useNavigate();
+  const [sessions,setSessions]=useState([]); const [loading,setLoading]=useState(true);
+  const [tab,setTab]=useState('Upcoming'); const [sel,setSel]=useState(null);
+  const [toCancel,setToCancel]=useState(null); const [toReview,setToReview]=useState(null);
+  const [slipTarget,setSlipTarget]=useState(null); const [slipFile,setSlipFile]=useState(null);
+  const [priceTarget,setPriceTarget]=useState(null); const [priceValue,setPriceValue]=useState('');
+  const [notice,setNotice]=useState('');
+  const [rating,setRating]=useState(0); const [comment,setComment]=useState('');
+  useEffect(()=>{api.get('/bookings/my').then(r=>setSessions(normalizeSessions(r.data))).catch(()=>setSessions(DEMO)).finally(()=>setLoading(false));}, []);
+  const grouped=useMemo(()=>{const up=[],past=[];sessions.forEach(s=>isPast(s)?past.push(s):up.push(s));return{Upcoming:up.sort((a,b)=>new Date(a.sessionDate)-new Date(b.sessionDate)),Past:past.sort((a,b)=>new Date(b.sessionDate)-new Date(a.sessionDate))};}, [sessions]);
+  const vis=grouped[tab]||[];
+  const pl=user?.role==='Tutor'?'Student':'Tutor';
+  const updateSession=(id,patch)=>setSessions(s=>s.map(x=>x.id===id?{...x,...patch}:x));
+  const doCancel=async()=>{try{await api.patch(`/bookings/${toCancel.id}/cancel`);}catch{}setSessions(s=>s.map(x=>x.id===toCancel.id?{...x,status:'Cancelled'}:x));setToCancel(null);};
+  const doReview=async()=>{if(rating<1)return;try{await api.post('/reviews',{bookingId:toReview.id,rating,comment});}catch{}setSessions(s=>s.map(x=>x.id===toReview.id?{...x,reviewed:true}:x));setToReview(null);setRating(0);setComment('');};
+  const openPrice=s=>{setPriceTarget(s);setPriceValue(String(s.sessionPrice||s.amountDue||''));setSel(null);};
+  const savePrice=async()=>{if(!priceTarget||Number(priceValue)<=0)return;try{const r=await api.patch(`/bookings/${priceTarget.id}/price`,{price:Number(priceValue)});updateSession(priceTarget.id,r.data?.session||{amountDue:Number(priceValue),sessionPrice:Number(priceValue)});setNotice('Session price updated.');}catch{updateSession(priceTarget.id,{amountDue:Number(priceValue),sessionPrice:Number(priceValue)});setNotice('Demo mode: session price updated.');}setPriceTarget(null);setPriceValue('');};
+  const openSlip=s=>{setSlipTarget(s);setSlipFile(null);setSel(null);};
+  const uploadSlip=async()=>{if(!slipTarget||!slipFile)return;const fd=new FormData();fd.append('slip',slipFile);try{const r=await api.post(`/payments/slips/${slipTarget.id}`,fd,{headers:{'Content-Type':'multipart/form-data'}});updateSession(slipTarget.id,r.data?.session||{paymentStatus:'PendingApproval',slipFileName:slipFile.name});setNotice('Payment slip uploaded for admin approval.');}catch(e){if(e.response){setNotice(e.response.data?.error||'Could not upload payment slip.');}else{updateSession(slipTarget.id,{paymentStatus:'PendingApproval',slipFileName:slipFile.name});setNotice('Demo mode: payment slip uploaded for admin approval.');}}setSlipTarget(null);setSlipFile(null);};
+  return(
+    <div className="page">
+      <div className="page-header"><div className="container"><p className="eyebrow">Your Learning Journey</p><h1>My Sessions</h1><p>Track all your upcoming and past tutoring sessions in one place.</p></div></div>
+      <div className="container section">
+        {notice&&<div className="alert alert-info">{notice}</div>}
+        <div className="stats-row">
+          {[{v:grouped.Upcoming?.length||0,l:'Upcoming'},{v:sessions.filter(s=>s.status==='Confirmed').length,l:'Confirmed'},{v:sessions.filter(s=>s.status==='Completed').length,l:'Completed'},{v:sessions.filter(s=>s.status==='Cancelled').length,l:'Cancelled'}].map(s=>(
+            <div key={s.l} className="stat-card"><div className="stat-value" style={{fontSize:'1.5rem'}}>{s.v}</div><div className="stat-label">{s.l}</div></div>
           ))}
         </div>
-
-        {loading ? (
-          <div className="soft-empty-state">
-            <span className="mini-spinner" />
-            <p>Loading sessions...</p>
-          </div>
-        ) : error ? (
-          <div className="sessions-error">
-            <p>{error}</p>
-            <button type="button" className="secondary-button" onClick={loadSessions}>
-              Try Again
-            </button>
-          </div>
-        ) : visibleSessions.length === 0 ? (
-          <div className="soft-empty-state">
-            <strong>No {selectedTab.toLowerCase()} sessions</strong>
-            <p>
-              {selectedTab === 'Upcoming'
-                ? 'Booked lessons and pending requests will appear here.'
-                : 'Completed and cancelled lessons will appear here.'}
-            </p>
-          </div>
-        ) : (
-          <div className="sessions-table-wrap">
-            <table className="sessions-table">
-              <thead>
-                <tr>
-                  <th>{participantLabel}</th>
-                  <th>Subject</th>
-                  <th>Date & Time</th>
-                  <th>Status</th>
-                  <th aria-label="Open session detail" />
-                </tr>
-              </thead>
-              <tbody>
-                {visibleSessions.map((session) => (
-                  <tr
-                    key={session.id}
-                    onClick={() => {
-                      setSelectedSession(session);
-                      setActionError('');
-                    }}
-                  >
-                    <td>
-                      <strong>{session.participantName}</strong>
-                      <span>{session.participantRole}</span>
-                    </td>
-                    <td>{session.subject}</td>
-                    <td>{formatDateTime(session)}</td>
-                    <td>
-                      <span className={`session-status session-status-${session.status.toLowerCase()}`}>
-                        {session.status}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="session-row-action">View</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {selectedSession && (
-        <div className="session-detail-backdrop" role="presentation">
-          <section className="session-detail-modal" aria-labelledby="session-detail-title">
-            <header>
-              <p className="eyebrow">Session Detail</p>
-              <h2 id="session-detail-title">{selectedSession.subject}</h2>
-              <span className={`session-status session-status-${selectedSession.status.toLowerCase()}`}>
-                {selectedSession.status}
-              </span>
-            </header>
-
-            <div className="session-detail-grid">
-              <article>
-                <span>{participantLabel}</span>
-                <strong>{selectedSession.participantName}</strong>
-              </article>
-              <article>
-                <span>Date</span>
-                <strong>{formatDateTime(selectedSession)}</strong>
-              </article>
-              <article>
-                <span>Tutor</span>
-                <strong>{selectedSession.tutorName}</strong>
-              </article>
-              <article>
-                <span>Student</span>
-                <strong>{selectedSession.studentName}</strong>
-              </article>
-            </div>
-
-            <div className="session-note">
-              <span>Lesson note</span>
-              <p>{selectedSession.note || 'No note added for this session.'}</p>
-            </div>
-
-            {actionError && <p className="field-error">{actionError}</p>}
-
-            <div className="session-detail-actions">
-              {canPaySelectedSession && (
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => navigate(`/checkout/${selectedSession.id}`)}
-                  disabled={cancelling}
-                >
-                  Pay Now
-                </button>
-              )}
-              {canCancelSelectedSession && (
-                <button
-                  type="button"
-                  className="danger-button"
-                  onClick={() => {
-                    setSessionToCancel(selectedSession);
-                    setActionError('');
-                  }}
-                  disabled={cancelling}
-                >
-                  Cancel Booking
-                </button>
-              )}
-              <button type="button" className="secondary-button" onClick={() => setSelectedSession(null)} disabled={cancelling}>
-                Close
-              </button>
-            </div>
-          </section>
+        <div className="tabs" style={{maxWidth:280,marginBottom:'1.1rem'}}>
+          {['Upcoming','Past'].map(t=><button key={t} className={`tab${tab===t?' active':''}`} onClick={()=>setTab(t)}>{t}</button>)}
         </div>
-      )}
-
-      {sessionToCancel && (
-        <div className="session-detail-backdrop" role="presentation">
-          <section className="session-confirm-modal" aria-labelledby="cancel-session-title">
-            <header>
-              <p className="eyebrow">Cancel Booking</p>
-              <h2 id="cancel-session-title">Release this time slot?</h2>
-              <p>
-                Cancelling will mark this booking as cancelled and make the time slot available for other students.
-              </p>
-            </header>
-
-            <div className="session-confirm-summary">
-              <strong>{sessionToCancel.subject}</strong>
-              <span>{formatDateTime(sessionToCancel)}</span>
-              <span>{sessionToCancel.participantName}</span>
-            </div>
-
-            {actionError && <p className="field-error">{actionError}</p>}
-
-            <div className="session-detail-actions">
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => {
-                  setSessionToCancel(null);
-                  setActionError('');
-                }}
-                disabled={cancelling}
-              >
-                Keep Booking
-              </button>
-              <button type="button" className="danger-button" onClick={handleCancelBooking} disabled={cancelling}>
-                {cancelling ? 'Cancelling...' : 'Confirm Cancel'}
-              </button>
-            </div>
-          </section>
+        {loading?<div style={{textAlign:'center',padding:'3rem',color:'var(--text3)'}}>Loading sessions…</div>
+        :vis.length===0?<div className="card"><div className="empty-state"><h3>No {tab.toLowerCase()} sessions</h3><p>{tab==='Upcoming'?(user?.role==='Student'?'Book a tutor to schedule your first session.':'Upcoming sessions will appear here.'):'Completed sessions will appear here.'}</p>{tab==='Upcoming'&&user?.role==='Student'&&<button className="btn btn-primary" style={{marginTop:'1rem'}} onClick={()=>navigate('/tutors')}>Browse Tutors</button>}</div></div>
+        :<div className="card">{vis.map(s=><div key={s.id} className="session-row" onClick={()=>setSel(s)}><div className="avatar">{s.subject.charAt(0)}</div><div className="session-info"><strong>{s.subject}</strong><span>{fmtDT(s)} · {pl}: {user?.role==='Tutor'?s.studentName:s.tutorName}</span></div><StatusBadge status={s.status}/><span style={{color:'var(--brand-mid)',fontSize:'.78rem',marginLeft:6}}>View →</span></div>)}</div>}
+      </div>
+      {sel&&<div className="modal-backdrop" onClick={e=>e.target===e.currentTarget&&setSel(null)}><div className="modal">
+        <div className="modal-header"><p className="eyebrow" style={{color:'var(--brand)'}}>Session Detail</p><div style={{display:'flex',alignItems:'center',gap:9}}><h2 style={{fontSize:'1.15rem'}}>{sel.subject}</h2><StatusBadge status={sel.status}/></div></div>
+        <div className="modal-body">
+          <div className="grid-2" style={{marginBottom:'.85rem'}}>{[{l:'Tutor',v:sel.tutorName},{l:'Student',v:sel.studentName},{l:'Date & Time',v:fmtDT(sel)},{l:'Subject',v:sel.subject},{l:'Price',v:fmtCurr(sel.amountDue||sel.sessionPrice)},{l:'Payment',v:sel.paymentStatus||'Not submitted'}].map(i=><div key={i.l} className="mini-card"><span className="mc-label">{i.l}</span><span className="mc-value">{i.v}</span></div>)}</div>
+          {sel.slipFileName&&<div className="alert alert-info">Payment slip uploaded: {sel.slipFileName}</div>}
+          {sel.paymentStatus==='PendingApproval'&&<div className="alert alert-info">This payment is waiting for admin approval.</div>}
+          {sel.paymentStatus==='Rejected'&&<div className="alert alert-danger">The previous payment slip was rejected. Upload a corrected slip for review.</div>}
+          {sel.note&&<div className="mini-card"><span className="mc-label">Lesson Note</span><p style={{fontSize:'.85rem',color:'var(--text2)',marginTop:'.2rem'}}>{sel.note}</p></div>}
         </div>
-      )}
-    </main>
+        <div className="modal-footer">
+          {user?.role==='Student'&&sel.status==='Confirmed'&&<button className="btn btn-danger btn-sm" onClick={()=>{setToCancel(sel);setSel(null);}}>Cancel Booking</button>}
+          {user?.role==='Student'&&sel.status==='Completed'&&!sel.reviewed&&<button className="btn btn-accent btn-sm" onClick={()=>{setToReview(sel);setSel(null);}}>Leave Review</button>}
+          {user?.role==='Student'&&['Pending','Confirmed'].includes(sel.status)&&sel.paymentStatus!=='PendingApproval'&&<button className="btn btn-primary btn-sm" onClick={()=>openSlip(sel)}>Upload Slip</button>}
+          {user?.role==='Tutor'&&['Pending','Confirmed'].includes(sel.status)&&<button className="btn btn-primary btn-sm" onClick={()=>openPrice(sel)}>Set Price</button>}
+          <button className="btn btn-secondary btn-sm" onClick={()=>setSel(null)}>Close</button>
+        </div>
+      </div></div>}
+      {toCancel&&<div className="modal-backdrop"><div className="modal">
+        <div className="modal-header"><p className="eyebrow" style={{color:'var(--danger)'}}>Cancel Booking</p><h2 style={{fontSize:'1.15rem'}}>Release this time slot?</h2></div>
+        <div className="modal-body"><div className="confirm-summary"><strong>{toCancel.subject}</strong><span>{fmtDT(toCancel)}</span><span>with {toCancel.tutorName}</span></div></div>
+        <div className="modal-footer"><button className="btn btn-secondary btn-sm" onClick={()=>setToCancel(null)}>Keep Booking</button><button className="btn btn-danger btn-sm" onClick={doCancel}>Confirm Cancel</button></div>
+      </div></div>}
+      {priceTarget&&<div className="modal-backdrop"><div className="modal">
+        <div className="modal-header"><p className="eyebrow" style={{color:'var(--brand)'}}>Session Price</p><h2 style={{fontSize:'1.15rem'}}>Set price for {priceTarget.subject}</h2></div>
+        <div className="modal-body">
+          <div className="confirm-summary"><strong>{priceTarget.studentName}</strong><span>{fmtDT(priceTarget)}</span></div>
+          <div className="field"><label>Session price</label><input type="number" min="1" step="0.01" value={priceValue} onChange={e=>setPriceValue(e.target.value)} placeholder="45.00"/></div>
+        </div>
+        <div className="modal-footer"><button className="btn btn-secondary btn-sm" onClick={()=>setPriceTarget(null)}>Cancel</button><button className="btn btn-primary btn-sm" disabled={Number(priceValue)<=0} onClick={savePrice}>Save Price</button></div>
+      </div></div>}
+      {slipTarget&&<div className="modal-backdrop"><div className="modal">
+        <div className="modal-header"><p className="eyebrow" style={{color:'var(--brand)'}}>Payment Slip</p><h2 style={{fontSize:'1.15rem'}}>Upload payment slip</h2></div>
+        <div className="modal-body">
+          <div className="confirm-summary"><strong>{slipTarget.subject}</strong><span>{fmtDT(slipTarget)}</span><span>Amount: {fmtCurr(slipTarget.amountDue||slipTarget.sessionPrice)}</span></div>
+          <div className="field"><label>Slip file</label><input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={e=>setSlipFile(e.target.files?.[0]||null)}/><p className="field-hint">Accepted: JPG, PNG, WebP, PDF. Max 5MB.</p></div>
+        </div>
+        <div className="modal-footer"><button className="btn btn-secondary btn-sm" onClick={()=>setSlipTarget(null)}>Cancel</button><button className="btn btn-primary btn-sm" disabled={!slipFile} onClick={uploadSlip}>Upload Slip</button></div>
+      </div></div>}
+      {toReview&&<div className="modal-backdrop"><div className="modal">
+        <div className="modal-header"><p className="eyebrow" style={{color:'var(--accent)'}}>Leave Feedback</p><h2 style={{fontSize:'1.15rem'}}>Review {toReview.tutorName}</h2></div>
+        <div className="modal-body">
+          <div className="confirm-summary" style={{marginBottom:'1rem'}}><strong>{toReview.subject}</strong><span>{fmtDT(toReview)}</span></div>
+          <div className="field"><label>Star Rating</label><div style={{display:'flex',gap:4}}>{[1,2,3,4,5].map(n=><button key={n} type="button" className={`review-star${n<=rating?' filled':' empty'}`} onClick={()=>setRating(n)}>★</button>)}</div></div>
+          <div className="field"><label>Comment (optional)</label><textarea rows={3} value={comment} onChange={e=>setComment(e.target.value)} placeholder="Share what helped…"/></div>
+        </div>
+        <div className="modal-footer"><button className="btn btn-secondary btn-sm" onClick={()=>setToReview(null)}>Cancel</button><button className="btn btn-primary btn-sm" disabled={rating<1} onClick={doReview}>Submit Review</button></div>
+      </div></div>}
+    </div>
   );
 }
