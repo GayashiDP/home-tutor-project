@@ -4,6 +4,17 @@ import { useAuth } from '../../hooks/useAuth';
 export default function DashboardPage({ role }) {
   const { user, logout } = useAuth();
   const isTutor = role === 'Tutor';
+  const quickStats = isTutor
+    ? [
+        { label: 'Listing', value: 'Live', detail: 'Tutor profile active' },
+        { label: 'Schedule', value: 'Weekly', detail: 'Manage bookable slots' },
+        { label: 'Bookings', value: 'Pending', detail: 'Review student requests' },
+      ]
+    : [
+        { label: 'Catalog', value: 'Open', detail: 'Search tutors by subject' },
+        { label: 'Bookings', value: 'Ready', detail: 'Pick green availability slots' },
+        { label: 'Session', value: 'Secure', detail: 'JWT protected account' },
+      ];
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -22,7 +33,7 @@ export default function DashboardPage({ role }) {
             <p className="eyebrow">{role} Dashboard</p>
             <h1 id="dashboard-heading">Welcome, {user.name}</h1>
             <p className="dashboard-copy">
-              Your account is secured with JWT authentication and ready for today’s tutoring workflow.
+              Manage your tutoring workflow from one place with secure account access and live API-backed data.
             </p>
           </div>
           <div className="dashboard-user-card">
@@ -34,6 +45,16 @@ export default function DashboardPage({ role }) {
           </div>
         </header>
 
+        <section className="dashboard-metrics" aria-label="Dashboard summary">
+          {quickStats.map((item) => (
+            <article className="dashboard-metric-card" key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              <p>{item.detail}</p>
+            </article>
+          ))}
+        </section>
+
         <div className="dashboard-grid">
           <Link className="dashboard-action-card" to="/profile">
             <span>Profile</span>
@@ -42,11 +63,18 @@ export default function DashboardPage({ role }) {
           </Link>
 
           {isTutor ? (
-            <Link className="dashboard-action-card" to="/tutor/subjects">
-              <span>Subjects</span>
-              <strong>Manage your tutor listing</strong>
-              <p>Add subjects, describe grade levels, and remove inactive offerings.</p>
-            </Link>
+            <>
+              <Link className="dashboard-action-card" to="/tutor/subjects">
+                <span>Subjects</span>
+                <strong>Manage your tutor listing</strong>
+                <p>Add subjects, describe grade levels, and remove inactive offerings.</p>
+              </Link>
+              <Link className="dashboard-action-card" to="/tutor/availability">
+                <span>Availability</span>
+                <strong>Set your weekly schedule</strong>
+                <p>Mark hourly slots students can book and keep your calendar current.</p>
+              </Link>
+            </>
           ) : (
             <Link className="dashboard-action-card" to="/tutors">
               <span>Tutors</span>

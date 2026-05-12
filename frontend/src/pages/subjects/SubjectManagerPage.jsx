@@ -111,82 +111,98 @@ export default function SubjectManagerPage() {
           <p>Add the subjects you teach and remove inactive listings from the catalog.</p>
         </header>
 
-        <form className="subject-form" onSubmit={handleSubmit}>
-          <div className="form-field">
-            <label htmlFor="name">Subject Name</label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Mathematics"
-              required
-            />
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="description">Description</label>
-            <textarea
-              id="description"
-              name="description"
-              rows={4}
-              value={form.description}
-              onChange={handleChange}
-              placeholder="Briefly describe what you cover in this subject."
-            />
-          </div>
-
-          <div className="form-field">
-            <label htmlFor="gradeLevel">Grade Level</label>
-            <input
-              id="gradeLevel"
-              name="gradeLevel"
-              type="text"
-              value={form.gradeLevel}
-              onChange={handleChange}
-              placeholder="Grade 6-11, A/L, Undergraduate"
-            />
-          </div>
-
-          {error && <p className="field-error">{error}</p>}
-
-          <button type="submit" className="primary-button" disabled={saving}>
-            {saving ? 'Adding...' : 'Add Subject'}
-          </button>
-        </form>
-
-        <section className="subject-list-panel" aria-labelledby="current-subjects-heading">
-          <div className="subject-list-heading">
-            <h2 id="current-subjects-heading">Current Subjects</h2>
-            <span>{subjects.length} active</span>
-          </div>
-
-          {loading ? (
-            <p className="profile-value">Loading subjects...</p>
-          ) : subjects.length === 0 ? (
-            <p className="profile-value">No subjects added yet.</p>
-          ) : (
-            <div className="managed-subject-list">
-              {subjects.map((subject) => (
-                <article className="managed-subject-card" key={subject.id}>
-                  <div>
-                    <h3>{subject.name}</h3>
-                    <p>{subject.description || 'No description added.'}</p>
-                    {subject.gradeLevel && <span>{subject.gradeLevel}</span>}
-                  </div>
-                  <button
-                    type="button"
-                    className="danger-button"
-                    onClick={() => handleDelete(subject)}
-                  >
-                    Delete
-                  </button>
-                </article>
-              ))}
+        <div className="subject-manager-grid">
+          <form className="subject-form" onSubmit={handleSubmit}>
+            <div>
+              <p className="panel-kicker">New Subject</p>
+              <h2>Add teaching area</h2>
             </div>
-          )}
-        </section>
+
+            <div className="form-field">
+              <label htmlFor="name">Subject Name</label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Mathematics"
+                required
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="description">Description</label>
+              <textarea
+                id="description"
+                name="description"
+                rows={4}
+                value={form.description}
+                onChange={handleChange}
+                placeholder="Briefly describe what you cover in this subject."
+              />
+            </div>
+
+            <div className="form-field">
+              <label htmlFor="gradeLevel">Grade Level</label>
+              <input
+                id="gradeLevel"
+                name="gradeLevel"
+                type="text"
+                value={form.gradeLevel}
+                onChange={handleChange}
+                placeholder="Grade 6-11, A/L, Undergraduate"
+              />
+            </div>
+
+            {error && <p className="field-error">{error}</p>}
+
+            <button type="submit" className="primary-button" disabled={saving}>
+              {saving ? 'Adding...' : 'Add Subject'}
+            </button>
+          </form>
+
+          <section className="subject-list-panel" aria-labelledby="current-subjects-heading">
+            <div className="subject-list-heading">
+              <div>
+                <p className="panel-kicker">Catalog Visibility</p>
+                <h2 id="current-subjects-heading">Current Subjects</h2>
+              </div>
+              <span>{subjects.length} active</span>
+            </div>
+
+            {loading ? (
+              <div className="soft-empty-state">
+                <span className="mini-spinner" />
+                <p>Loading subjects...</p>
+              </div>
+            ) : subjects.length === 0 ? (
+              <div className="soft-empty-state">
+                <strong>No subjects added yet</strong>
+                <p>Add your first subject to appear in student catalog filters.</p>
+              </div>
+            ) : (
+              <div className="managed-subject-list">
+                {subjects.map((subject) => (
+                  <article className="managed-subject-card" key={subject.id}>
+                    <div>
+                      <h3>{subject.name}</h3>
+                      <p>{subject.description || 'No description added.'}</p>
+                      {subject.gradeLevel && <span>{subject.gradeLevel}</span>}
+                    </div>
+                    <button
+                      type="button"
+                      className="danger-button"
+                      onClick={() => handleDelete(subject)}
+                    >
+                      Delete
+                    </button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </section>
     </main>
   );

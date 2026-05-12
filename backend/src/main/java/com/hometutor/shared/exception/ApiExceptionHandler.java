@@ -3,6 +3,10 @@ package com.hometutor.shared.exception;
 import com.hometutor.auth.exception.AuthenticationRequiredException;
 import com.hometutor.auth.exception.DuplicateEmailException;
 import com.hometutor.auth.exception.InvalidCredentialsException;
+import com.hometutor.availability.exception.AvailabilitySlotNotFoundException;
+import com.hometutor.availability.exception.ConfirmedBookingConflictException;
+import com.hometutor.booking.exception.SlotUnavailableException;
+import com.hometutor.booking.exception.StudentOnlyBookingException;
 import com.hometutor.profile.exception.ProfileNotFoundException;
 import com.hometutor.subject.exception.DuplicateSubjectException;
 import com.hometutor.subject.exception.SubjectNotFoundException;
@@ -81,6 +85,36 @@ public class ApiExceptionHandler {
   public ResponseEntity<Map<String, String>> handleTutorOnlySubject() {
     return ResponseEntity.status(HttpStatus.FORBIDDEN)
         .body(Map.of("error", "Only tutors can manage subjects"));
+  }
+
+  @ExceptionHandler(AvailabilitySlotNotFoundException.class)
+  public ResponseEntity<Map<String, String>> handleAvailabilitySlotNotFound() {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(Map.of("error", "Availability slot not found"));
+  }
+
+  @ExceptionHandler(ConfirmedBookingConflictException.class)
+  public ResponseEntity<Map<String, String>> handleConfirmedBookingConflict() {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(Map.of("error", "This change conflicts with a confirmed booking"));
+  }
+
+  @ExceptionHandler(StudentOnlyBookingException.class)
+  public ResponseEntity<Map<String, String>> handleStudentOnlyBooking() {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(Map.of("error", "Only students can book tutor sessions"));
+  }
+
+  @ExceptionHandler(SlotUnavailableException.class)
+  public ResponseEntity<Map<String, String>> handleSlotUnavailable() {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(Map.of("error", "This time slot is no longer available"));
+  }
+
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<Map<String, String>> handleBadRequest(IllegalArgumentException exception) {
+    return ResponseEntity.badRequest()
+        .body(Map.of("error", exception.getMessage() == null ? "Invalid request" : exception.getMessage()));
   }
 
   @ExceptionHandler(NoResourceFoundException.class)

@@ -16,6 +16,15 @@
   max-width: 72rem;
 }
 
+.catalog-eyebrow {
+  color: rgba(255,255,255,.72);
+  font-size: .78rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  margin: 0 0 .65rem;
+  text-transform: uppercase;
+}
+
 .header-content h1 {
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 900;
@@ -168,10 +177,28 @@
   margin: 0 0 1.5rem;
 }
 
+.results-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin: 0 0 1.5rem;
+}
+
 .results-count {
   color: #344054;
   font-weight: 900;
-  margin: 0 0 1.5rem;
+  margin: 0;
+}
+
+.results-toolbar span {
+  background: #fff;
+  border: 1px solid #d9e2ec;
+  border-radius: 999px;
+  color: #344054;
+  font-size: .86rem;
+  font-weight: 800;
+  padding: .45rem .8rem;
 }
 
 .tutors-grid {
@@ -343,6 +370,11 @@
   .search-container,
   .tutors-grid {
     grid-template-columns: 1fr;
+  }
+
+  .results-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .card-footer {

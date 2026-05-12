@@ -34,9 +34,14 @@ export default function Navbar() {
                   Dashboard
                 </Link>
                 {user.role === 'Tutor' && (
-                  <Link to="/tutor/subjects" className="app-navbar-link">
-                    Subjects
-                  </Link>
+                  <>
+                    <Link to="/tutor/subjects" className="app-navbar-link">
+                      Subjects
+                    </Link>
+                    <Link to="/tutor/availability" className="app-navbar-link">
+                      Availability
+                    </Link>
+                  </>
                 )}
                 <button
                   onClick={handleLogout}
@@ -103,13 +108,22 @@ export default function Navbar() {
                   Dashboard
                 </Link>
                 {user.role === 'Tutor' && (
-                  <Link
-                    to="/tutor/subjects"
-                    className="app-navbar-mobile-link"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Subjects
-                  </Link>
+                  <>
+                    <Link
+                      to="/tutor/subjects"
+                      className="app-navbar-mobile-link"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Subjects
+                    </Link>
+                    <Link
+                      to="/tutor/availability"
+                      className="app-navbar-mobile-link"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Availability
+                    </Link>
+                  </>
                 )}
                 <button
                   onClick={() => {
