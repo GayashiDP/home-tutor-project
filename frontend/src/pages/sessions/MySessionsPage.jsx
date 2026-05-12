@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
 import { useAuth } from '../../hooks/useAuth';
 import { cancelBooking, getMySessions } from '../../services/bookingService';
@@ -33,6 +33,7 @@ const isPastSession = (session) => {
 
 export default function MySessionsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [selectedTab, setSelectedTab] = useState('Upcoming');
   const [selectedSession, setSelectedSession] = useState(null);
@@ -94,6 +95,12 @@ export default function MySessionsPage() {
       && user.role === 'Student'
       && !isPastSession(selectedSession)
       && ['Pending', 'Confirmed'].includes(selectedSession.status),
+  );
+  const canPaySelectedSession = Boolean(
+    selectedSession
+      && user.role === 'Student'
+      && selectedSession.status === 'Pending'
+      && !isPastSession(selectedSession),
   );
 
   const handleCancelBooking = async () => {
@@ -273,6 +280,16 @@ export default function MySessionsPage() {
             {actionError && <p className="field-error">{actionError}</p>}
 
             <div className="session-detail-actions">
+              {canPaySelectedSession && (
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => navigate(`/checkout/${selectedSession.id}`)}
+                  disabled={cancelling}
+                >
+                  Pay Now
+                </button>
+              )}
               {canCancelSelectedSession && (
                 <button
                   type="button"
@@ -286,7 +303,7 @@ export default function MySessionsPage() {
                   Cancel Booking
                 </button>
               )}
-              <button type="button" className="primary-button" onClick={() => setSelectedSession(null)} disabled={cancelling}>
+              <button type="button" className="secondary-button" onClick={() => setSelectedSession(null)} disabled={cancelling}>
                 Close
               </button>
             </div>

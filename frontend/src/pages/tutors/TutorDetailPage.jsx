@@ -156,6 +156,7 @@ export default function TutorDetailPage() {
       });
       setSelectedSlot(null);
       await fetchTutorDetail();
+      navigate(`/checkout/${response.data.booking.id}`);
     } catch (err) {
       setBookingError(err.response?.data?.error || 'Unable to book this slot. Please try another time.');
       await fetchTutorDetail();

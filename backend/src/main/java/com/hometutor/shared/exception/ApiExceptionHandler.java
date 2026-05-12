@@ -9,7 +9,10 @@ import com.hometutor.booking.exception.BookingCancellationException;
 import com.hometutor.booking.exception.BookingNotFoundException;
 import com.hometutor.booking.exception.SlotUnavailableException;
 import com.hometutor.booking.exception.StudentOnlyBookingException;
+import com.hometutor.payment.exception.PaymentFailedException;
 import com.hometutor.profile.exception.ProfileNotFoundException;
+import com.hometutor.review.exception.DuplicateReviewException;
+import com.hometutor.review.exception.ReviewNotAllowedException;
 import com.hometutor.subject.exception.DuplicateSubjectException;
 import com.hometutor.subject.exception.SubjectNotFoundException;
 import com.hometutor.subject.exception.TutorOnlySubjectException;
@@ -123,6 +126,24 @@ public class ApiExceptionHandler {
   public ResponseEntity<Map<String, String>> handleSlotUnavailable() {
     return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(Map.of("error", "This time slot is no longer available"));
+  }
+
+  @ExceptionHandler(PaymentFailedException.class)
+  public ResponseEntity<Map<String, String>> handlePaymentFailed(PaymentFailedException exception) {
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(Map.of("error", exception.getMessage()));
+  }
+
+  @ExceptionHandler(DuplicateReviewException.class)
+  public ResponseEntity<Map<String, String>> handleDuplicateReview() {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(Map.of("error", "You have already reviewed this session"));
+  }
+
+  @ExceptionHandler(ReviewNotAllowedException.class)
+  public ResponseEntity<Map<String, String>> handleReviewNotAllowed(ReviewNotAllowedException exception) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(Map.of("error", exception.getMessage()));
   }
 
   @ExceptionHandler(IllegalArgumentException.class)

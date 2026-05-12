@@ -154,6 +154,7 @@ public class BookingService {
     data.put("studentName", session.studentName());
     data.put("tutorId", session.tutorId());
     data.put("tutorName", session.tutorName());
+    data.put("amountDue", session.hourlyRate());
     data.put("subject", session.subject());
     data.put("status", session.status());
     data.put("sessionDate", session.sessionDate());
@@ -161,6 +162,7 @@ public class BookingService {
     data.put("startTime", normalizeTime(session.startTime()));
     data.put("endTime", normalizeTime(session.endTime()));
     data.put("note", session.note() == null ? "" : session.note());
+    data.put("reviewed", session.reviewed());
     return data;
   }
 

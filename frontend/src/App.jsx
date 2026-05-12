@@ -5,11 +5,13 @@ import { useAuth } from './hooks/useAuth';
 import AvailabilityManagerPage from './pages/availability/AvailabilityManagerPage';
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
+import CheckoutPage from './pages/checkout/CheckoutPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/profile/ProfilePage';
 import MySessionsPage from './pages/sessions/MySessionsPage';
 import SubjectManagerPage from './pages/subjects/SubjectManagerPage';
+import TransactionHistoryPage from './pages/payments/TransactionHistoryPage';
 import TutorCatalogPage from './pages/tutors/TutorCatalogPage';
 import TutorDetailPage from './pages/tutors/TutorDetailPage';
 
@@ -46,6 +48,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <MySessionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/checkout/:bookingId"
+            element={
+              <ProtectedRoute>
+                <CheckoutPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/transactions"
+            element={
+              <ProtectedRoute>
+                <TransactionHistoryPage />
               </ProtectedRoute>
             }
           />
