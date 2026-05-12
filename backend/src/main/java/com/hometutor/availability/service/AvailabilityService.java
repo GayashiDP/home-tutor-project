@@ -1,11 +1,13 @@
 package com.hometutor.availability.service;
 
+import com.hometutor.auth.exception.AccountSuspendedException;
 import com.hometutor.availability.dto.SaveAvailabilityRequest;
 import com.hometutor.availability.dto.SaveAvailabilityRequest.AvailabilitySlotRequest;
 import com.hometutor.availability.dto.UpdateAvailabilitySlotRequest;
 import com.hometutor.availability.exception.AvailabilitySlotNotFoundException;
 import com.hometutor.availability.exception.ConfirmedBookingConflictException;
 import com.hometutor.subject.exception.TutorOnlySubjectException;
+import com.hometutor.tutor.exception.TutorNotFoundException;
 import com.hometutor.user.UserRepository;
 import com.hometutor.user.UserRepository.AvailabilitySlotRecord;
 import com.hometutor.user.UserRepository.UserRecord;
@@ -33,6 +35,10 @@ public class AvailabilityService {
   }
 
   public Map<String, Object> getTutorAvailability(String tutorId) {
+    if (userRepository.findTutorById(tutorId).isEmpty()) {
+      throw new TutorNotFoundException();
+    }
+
     return Map.of("slots", slots(tutorId));
   }
 
@@ -101,6 +107,10 @@ public class AvailabilityService {
 
     if (!"Tutor".equals(user.role())) {
       throw new TutorOnlySubjectException();
+    }
+
+    if ("Suspended".equals(user.status())) {
+      throw new AccountSuspendedException();
     }
 
     return user;

@@ -1,5 +1,6 @@
 package com.hometutor.subject.service;
 
+import com.hometutor.auth.exception.AccountSuspendedException;
 import com.hometutor.subject.dto.CreateSubjectRequest;
 import com.hometutor.subject.exception.DuplicateSubjectException;
 import com.hometutor.subject.exception.SubjectNotFoundException;
@@ -54,6 +55,10 @@ public class SubjectService {
 
     if (!"Tutor".equals(user.role())) {
       throw new TutorOnlySubjectException();
+    }
+
+    if ("Suspended".equals(user.status())) {
+      throw new AccountSuspendedException();
     }
 
     return user;
