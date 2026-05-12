@@ -113,6 +113,9 @@ export default function TutorCatalogPage() {
   }, [fetchTutors]);
 
   const hasFilters = Boolean(searchTerm || selectedSubject);
+  const catalogSubtitle = hasFilters
+    ? 'Showing tutors that match your current filters'
+    : 'Search live tutor profiles and book directly from available hours';
 
   return (
     <div className="tutor-catalog">
@@ -121,8 +124,9 @@ export default function TutorCatalogPage() {
       {/* Page Header */}
       <section className="catalog-header">
         <div className="header-content">
+          <p className="catalog-eyebrow">Tutor Marketplace</p>
           <h1>Browse Expert Tutors</h1>
-          <p>Find the perfect tutor for your learning goals</p>
+          <p>{catalogSubtitle}</p>
         </div>
       </section>
 
@@ -213,9 +217,12 @@ export default function TutorCatalogPage() {
         {/* Tutors Grid */}
         {!loading && !error && tutors.length > 0 && (
           <div>
-            <p className="results-count">
-              {tutors.length} tutor{tutors.length !== 1 ? 's' : ''} found
-            </p>
+            <div className="results-toolbar">
+              <p className="results-count">
+                {tutors.length} tutor{tutors.length !== 1 ? 's' : ''} found
+              </p>
+              <span>{selectedSubject || 'All subjects'}</span>
+            </div>
             <div className="tutors-grid">
               {tutors.map((tutor) => (
                 <div

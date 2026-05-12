@@ -96,7 +96,7 @@ export default function ProfilePage() {
 
       <section className="profile-shell" aria-labelledby="profile-heading">
         <div className="profile-topbar">
-          <Link to={dashboardPath}>Dashboard</Link>
+          <Link to={dashboardPath}>Back to Dashboard</Link>
           <button type="button" className="secondary-button" onClick={logout}>
             Logout
           </button>
@@ -115,6 +115,21 @@ export default function ProfilePage() {
 
         {!isEditing ? (
           <div className="profile-view">
+            <section className="profile-summary-grid" aria-label="Profile summary">
+              <article>
+                <span>Role</span>
+                <strong>{currentProfile.role}</strong>
+              </article>
+              <article>
+                <span>Profile</span>
+                <strong>{currentProfile.bio ? 'Complete' : 'Needs bio'}</strong>
+              </article>
+              <article>
+                <span>Subjects</span>
+                <strong>{subjects.length}</strong>
+              </article>
+            </section>
+
             <section className="profile-section">
               <div>
                 <p className="profile-label">Contact info</p>

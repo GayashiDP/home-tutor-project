@@ -201,6 +201,212 @@ public class UserRepository {
     return rows > 0;
   }
 
+  public List<AvailabilitySlotRecord> findAvailabilityByTutorId(String tutorId) {
+    return jdbcTemplate.query(
+        """
+        SELECT id, day_of_week, start_time::text, end_time::text, status
+        FROM availability_slots
+        WHERE tutor_id = CAST(? AS uuid)
+        ORDER BY
+          CASE day_of_week
+            WHEN 'Monday' THEN 1
+            WHEN 'Tuesday' THEN 2
+            WHEN 'Wednesday' THEN 3
+            WHEN 'Thursday' THEN 4
+            WHEN 'Friday' THEN 5
+            WHEN 'Saturday' THEN 6
+            WHEN 'Sunday' THEN 7
+            ELSE 8
+          END,
+          start_time
+        """,
+        (rs, rowNum) -> new AvailabilitySlotRecord(
+            rs.getString("id"),
+            rs.getString("day_of_week"),
+            rs.getString("start_time"),
+            rs.getString("end_time"),
+            rs.getString("status")),
+        tutorId);
+  }
+
+  public Optional<AvailabilitySlotRecord> findAvailabilitySlotForTutor(String tutorId, String slotId) {
+    return jdbcTemplate.query(
+        """
+        SELECT id, day_of_week, start_time::text, end_time::text, status
+        FROM availability_slots
+        WHERE id = CAST(? AS uuid)
+          AND tutor_id = CAST(? AS uuid)
+        """,
+        (rs, rowNum) -> new AvailabilitySlotRecord(
+            rs.getString("id"),
+            rs.getString("day_of_week"),
+            rs.getString("start_time"),
+            rs.getString("end_time"),
+            rs.getString("status")),
+        slotId,
+        tutorId)
+        .stream()
+        .findFirst();
+  }
+
+  public List<String> findBookedSlotIdsByTutorId(String tutorId) {
+    return jdbcTemplate.query(
+        """
+        SELECT DISTINCT slot_id::text
+        FROM bookings
+        WHERE tutor_id = CAST(? AS uuid)
+          AND slot_id IS NOT NULL
+          AND status IN ('Pending', 'Confirmed')
+        """,
+        (rs, rowNum) -> rs.getString("slot_id"),
+        tutorId);
+  }
+
+  public boolean isAvailabilitySlotBooked(String slotId) {
+    Integer count = jdbcTemplate.queryForObject(
+        """
+        SELECT COUNT(*)
+        FROM bookings
+        WHERE slot_id = CAST(? AS uuid)
+          AND status IN ('Pending', 'Confirmed')
+        """,
+        Integer.class,
+        slotId);
+    return count != null && count > 0;
+  }
+
+  public boolean hasConfirmedBookingForSlot(String slotId) {
+    Integer count = jdbcTemplate.queryForObject(
+        """
+        SELECT COUNT(*)
+        FROM bookings
+        WHERE slot_id = CAST(? AS uuid)
+          AND status = 'Confirmed'
+        """,
+        Integer.class,
+        slotId);
+    return count != null && count > 0;
+  }
+
+  public boolean hasConfirmedBookingOverlap(
+      String tutorId,
+      String slotId,
+      String dayOfWeek,
+      String startTime,
+      String endTime) {
+    Integer count = jdbcTemplate.queryForObject(
+        """
+        SELECT COUNT(*)
+        FROM bookings b
+        JOIN availability_slots s ON s.id = b.slot_id
+        WHERE b.tutor_id = CAST(? AS uuid)
+          AND b.status = 'Confirmed'
+          AND b.slot_id <> CAST(? AS uuid)
+          AND s.day_of_week = ?
+          AND s.start_time < CAST(? AS time)
+          AND s.end_time > CAST(? AS time)
+        """,
+        Integer.class,
+        tutorId,
+        slotId,
+        dayOfWeek,
+        endTime,
+        startTime);
+    return count != null && count > 0;
+  }
+
+  public int countPendingBookingsForSlot(String slotId) {
+    Integer count = jdbcTemplate.queryForObject(
+        """
+        SELECT COUNT(*)
+        FROM bookings
+        WHERE slot_id = CAST(? AS uuid)
+          AND status = 'Pending'
+        """,
+        Integer.class,
+        slotId);
+    return count == null ? 0 : count;
+  }
+
+  public int notifyPendingBookingStudentsForSlot(String slotId, String message) {
+    return jdbcTemplate.update(
+        """
+        INSERT INTO notifications (id, user_id, booking_id, message)
+        SELECT gen_random_uuid(), b.student_id, b.id, ?
+        FROM bookings b
+        WHERE b.slot_id = CAST(? AS uuid)
+          AND b.status = 'Pending'
+        """,
+        message,
+        slotId);
+  }
+
+  public AvailabilitySlotRecord updateAvailabilitySlot(
+      String tutorId,
+      String slotId,
+      String dayOfWeek,
+      String startTime,
+      String endTime,
+      String status) {
+    jdbcTemplate.update(
+        """
+        UPDATE availability_slots
+        SET day_of_week = ?, start_time = CAST(? AS time), end_time = CAST(? AS time), status = ?
+        WHERE id = CAST(? AS uuid)
+          AND tutor_id = CAST(? AS uuid)
+        """,
+        dayOfWeek,
+        startTime,
+        endTime,
+        status,
+        slotId,
+        tutorId);
+
+    return findAvailabilitySlotForTutor(tutorId, slotId).orElseThrow();
+  }
+
+  public BookingRecord createBooking(
+      String studentId,
+      String tutorId,
+      String slotId,
+      String subject,
+      String sessionDate,
+      String note) {
+    String id = UUID.randomUUID().toString();
+    jdbcTemplate.update(
+        """
+        INSERT INTO bookings (id, student_id, tutor_id, slot_id, subject, status, session_date, note)
+        VALUES (CAST(? AS uuid), CAST(? AS uuid), CAST(? AS uuid), CAST(? AS uuid), ?, 'Pending', CAST(? AS date), ?)
+        """,
+        id,
+        studentId,
+        tutorId,
+        slotId,
+        subject,
+        sessionDate,
+        note);
+
+    return new BookingRecord(id, studentId, tutorId, slotId, subject, "Pending", sessionDate);
+  }
+
+  public void replaceAvailabilitySlots(String tutorId, List<AvailabilitySlotRecord> slots) {
+    jdbcTemplate.update("DELETE FROM availability_slots WHERE tutor_id = CAST(? AS uuid)", tutorId);
+
+    for (AvailabilitySlotRecord slot : slots) {
+      jdbcTemplate.update(
+          """
+          INSERT INTO availability_slots (id, tutor_id, day_of_week, start_time, end_time, status)
+          VALUES (CAST(? AS uuid), CAST(? AS uuid), ?, CAST(? AS time), CAST(? AS time), ?)
+          """,
+          UUID.randomUUID().toString(),
+          tutorId,
+          slot.dayOfWeek(),
+          slot.startTime(),
+          slot.endTime(),
+          slot.status());
+    }
+  }
+
   public void replaceTutorSubjects(String tutorId, List<String> subjects) {
     jdbcTemplate.update("DELETE FROM subjects WHERE tutor_id = CAST(? AS uuid)", tutorId);
 
@@ -226,5 +432,23 @@ public class UserRepository {
   }
 
   public record SubjectRecord(String id, String name, String description, String gradeLevel) {
+  }
+
+  public record AvailabilitySlotRecord(
+      String id,
+      String dayOfWeek,
+      String startTime,
+      String endTime,
+      String status) {
+  }
+
+  public record BookingRecord(
+      String id,
+      String studentId,
+      String tutorId,
+      String slotId,
+      String subject,
+      String status,
+      String sessionDate) {
   }
 }

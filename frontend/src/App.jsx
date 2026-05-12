@@ -1,6 +1,8 @@
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
+import AvailabilityManagerPage from './pages/availability/AvailabilityManagerPage';
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
@@ -9,6 +11,16 @@ import ProfilePage from './pages/profile/ProfilePage';
 import SubjectManagerPage from './pages/subjects/SubjectManagerPage';
 import TutorCatalogPage from './pages/tutors/TutorCatalogPage';
 import TutorDetailPage from './pages/tutors/TutorDetailPage';
+
+function DashboardRedirect() {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Navigate to={user.role === 'Tutor' ? '/tutor/dashboard' : '/student/dashboard'} replace />;
+}
 
 function App() {
   return (
@@ -37,6 +49,14 @@ function App() {
             }
           />
           <Route
+            path="/tutor/availability"
+            element={
+              <ProtectedRoute>
+                <AvailabilityManagerPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/student/dashboard"
             element={
               <ProtectedRoute>
@@ -52,7 +72,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/dashboard" element={<Navigate to="/student/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardRedirect />} />
         </Routes>
       </Router>
     </AuthProvider>

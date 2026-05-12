@@ -1,15 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Navbar from '../../components/Navbar';
+import { useAuth } from '../../hooks/useAuth';
+import { getTutorAvailability } from '../../services/availabilityService';
 import api from '../../services/api';
+import { createBooking } from '../../services/bookingService';
 import './TutorDetail.css';
+
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const hours = Array.from({ length: 12 }, (_, index) => index + 8);
+const padHour = (hour) => `${String(hour).padStart(2, '0')}:00`;
 
 export default function TutorDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [tutor, setTutor] = useState(null);
+  const [availability, setAvailability] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [bookingSlotId, setBookingSlotId] = useState(null);
+  const [bookingFeedback, setBookingFeedback] = useState(null);
+  const [bookingError, setBookingError] = useState(null);
 
   const setSampleTutor = useCallback(() => {
     setTutor({
@@ -40,12 +52,18 @@ export default function TutorDetailPage() {
     });
   }, [id]);
 
-  const fetchTutorDetail = useCallback(async () => {
+  const fetchTutorDetail = useCallback(async ({ showLoader = false } = {}) => {
     try {
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      }
       setError(null);
-      const response = await api.get(`/tutors/${id}`);
-      setTutor(response.data.tutor);
+      const [tutorResponse, availabilityResponse] = await Promise.all([
+        api.get(`/tutors/${id}`),
+        getTutorAvailability(id),
+      ]);
+      setTutor(tutorResponse.data.tutor);
+      setAvailability(availabilityResponse.data.slots || []);
     } catch (err) {
       console.error('Error fetching tutor:', err);
       setError(err.response?.data?.error || 'Failed to load tutor details');
@@ -55,10 +73,62 @@ export default function TutorDetailPage() {
     }
   }, [id, setSampleTutor]);
 
+  const slotsByKey = new Map(availability.map((slot) => [`${slot.dayOfWeek}-${slot.startTime}`, slot]));
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local time';
+  const availableSlotCount = availability.filter((slot) => slot.status === 'available').length;
+  const bookedSlotCount = availability.filter((slot) => slot.status === 'booked').length;
+
+  const handleBookSlot = async (slot) => {
+    if (!slot || slot.status !== 'available') {
+      return;
+    }
+
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (user.role !== 'Student') {
+      setBookingError('Only students can book tutor sessions.');
+      setBookingFeedback(null);
+      return;
+    }
+
+    try {
+      setBookingSlotId(slot.id);
+      setBookingError(null);
+      setBookingFeedback(null);
+      await createBooking({
+        tutorId: id,
+        slotId: slot.id,
+        subject: tutor.subjects?.[0]?.name || 'General Tutoring',
+      });
+      setBookingFeedback('Booking request sent. This slot is now marked unavailable.');
+      await fetchTutorDetail();
+    } catch (err) {
+      setBookingError(err.response?.data?.error || 'Unable to book this slot. Please try another time.');
+      await fetchTutorDetail();
+    } finally {
+      setBookingSlotId(null);
+    }
+  };
+
   useEffect(() => {
     if (id) {
-      queueMicrotask(fetchTutorDetail);
+      queueMicrotask(() => fetchTutorDetail({ showLoader: true }));
     }
+  }, [fetchTutorDetail, id]);
+
+  useEffect(() => {
+    if (!id) {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => {
+      fetchTutorDetail();
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
   }, [fetchTutorDetail, id]);
 
   if (loading) {
@@ -137,10 +207,30 @@ export default function TutorDetailPage() {
           <p className="bio">{tutor.bio}</p>
 
           <div className="cta-buttons">
-            <button className="btn-primary">Book a Session</button>
+            <button
+              className="btn-primary"
+              onClick={() => document.getElementById('availability-calendar')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              Book a Session
+            </button>
             <button className="btn-secondary">Send Message</button>
           </div>
         </div>
+
+        <section className="detail-stats" aria-label="Tutor profile summary">
+          <article>
+            <span>Available Slots</span>
+            <strong>{availableSlotCount}</strong>
+          </article>
+          <article>
+            <span>Booked Slots</span>
+            <strong>{bookedSlotCount}</strong>
+          </article>
+          <article>
+            <span>Subjects</span>
+            <strong>{tutor.subjects?.length || 0}</strong>
+          </article>
+        </section>
 
         {/* Subjects Section */}
         {tutor.subjects && tutor.subjects.length > 0 && (
@@ -158,13 +248,41 @@ export default function TutorDetailPage() {
         )}
 
         {/* Availability Section */}
-        <section className="availability-section">
+        <section className="availability-section" id="availability-calendar">
           <h2>Availability</h2>
-          <div className="availability-grid">
-            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
-              <div key={day} className="day-slot">
-                <p className="day-name">{day.slice(0, 3)}</p>
-                <p className="slots-text">Check slots</p>
+          <p className="availability-help">
+            Times shown in {timezone}. Green slots are available; grey slots are unavailable or already booked.
+          </p>
+          {bookingFeedback && <p className="booking-feedback">{bookingFeedback}</p>}
+          {bookingError && <p className="booking-error">{bookingError}</p>}
+          <div className="student-calendar" aria-label="Tutor weekly availability">
+            <div className="calendar-corner" />
+            {days.map((day) => (
+              <div className="calendar-day-heading" key={day}>
+                {day.slice(0, 3)}
+              </div>
+            ))}
+
+            {hours.map((hour) => (
+              <div className="calendar-row" key={hour}>
+                <div className="calendar-time">{padHour(hour)}</div>
+                {days.map((day) => {
+                  const slot = slotsByKey.get(`${day}-${padHour(hour)}`);
+                  const isAvailable = slot?.status === 'available';
+                  const isBooked = slot?.status === 'booked';
+                  const isBusy = bookingSlotId === slot?.id;
+                  return (
+                    <button
+                      className={`student-calendar-slot ${isAvailable ? 'student-calendar-available' : ''} ${isBooked ? 'student-calendar-booked' : ''}`}
+                      disabled={!isAvailable || isBusy}
+                      key={`${day}-${hour}`}
+                      onClick={() => handleBookSlot(slot)}
+                      type="button"
+                    >
+                      {isBusy ? 'Booking...' : isAvailable ? 'Book' : isBooked ? 'Booked' : 'Unavailable'}
+                    </button>
+                  );
+                })}
               </div>
             ))}
           </div>
