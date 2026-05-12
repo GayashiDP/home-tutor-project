@@ -389,6 +389,100 @@ public class UserRepository {
     return new BookingRecord(id, studentId, tutorId, slotId, subject, "Pending", sessionDate);
   }
 
+  public List<SessionRecord> findSessionsByUser(String userId, String role) {
+    String participantJoin = "Tutor".equals(role)
+        ? "JOIN users other_user ON other_user.id = b.student_id"
+        : "JOIN users other_user ON other_user.id = b.tutor_id";
+    String userColumn = "Tutor".equals(role) ? "b.tutor_id" : "b.student_id";
+
+    return jdbcTemplate.query(
+        """
+        SELECT b.id, b.subject, b.status, b.session_date::text, COALESCE(b.note, '') AS note,
+               COALESCE(s.day_of_week, '') AS day_of_week,
+               COALESCE(s.start_time::text, '') AS start_time,
+               COALESCE(s.end_time::text, '') AS end_time,
+               b.student_id::text AS student_id,
+               student_user.name AS student_name,
+               b.tutor_id::text AS tutor_id,
+               tutor_user.name AS tutor_name,
+               other_user.name AS participant_name
+        FROM bookings b
+        LEFT JOIN availability_slots s ON s.id = b.slot_id
+        JOIN users student_user ON student_user.id = b.student_id
+        JOIN users tutor_user ON tutor_user.id = b.tutor_id
+        %s
+        WHERE %s = CAST(? AS uuid)
+        ORDER BY b.session_date DESC, s.start_time DESC NULLS LAST
+        """.formatted(participantJoin, userColumn),
+        this::mapSessionRecord,
+        userId);
+  }
+
+  public Optional<SessionRecord> findSessionByIdForUser(String userId, String role, String bookingId) {
+    String participantJoin = "Tutor".equals(role)
+        ? "JOIN users other_user ON other_user.id = b.student_id"
+        : "JOIN users other_user ON other_user.id = b.tutor_id";
+    String userColumn = "Tutor".equals(role) ? "b.tutor_id" : "b.student_id";
+
+    return jdbcTemplate.query(
+        """
+        SELECT b.id, b.subject, b.status, b.session_date::text, COALESCE(b.note, '') AS note,
+               COALESCE(s.day_of_week, '') AS day_of_week,
+               COALESCE(s.start_time::text, '') AS start_time,
+               COALESCE(s.end_time::text, '') AS end_time,
+               b.student_id::text AS student_id,
+               student_user.name AS student_name,
+               b.tutor_id::text AS tutor_id,
+               tutor_user.name AS tutor_name,
+               other_user.name AS participant_name
+        FROM bookings b
+        LEFT JOIN availability_slots s ON s.id = b.slot_id
+        JOIN users student_user ON student_user.id = b.student_id
+        JOIN users tutor_user ON tutor_user.id = b.tutor_id
+        %s
+        WHERE b.id = CAST(? AS uuid)
+          AND %s = CAST(? AS uuid)
+        """.formatted(participantJoin, userColumn),
+        this::mapSessionRecord,
+        bookingId,
+        userId)
+        .stream()
+        .findFirst();
+  }
+
+  public Optional<SessionRecord> findSessionByIdForStudent(String studentId, String bookingId) {
+    return findSessionByIdForUser(studentId, "Student", bookingId);
+  }
+
+  public boolean updateBookingStatus(String bookingId, String status) {
+    int rows = jdbcTemplate.update(
+        """
+        UPDATE bookings
+        SET status = ?
+        WHERE id = CAST(? AS uuid)
+        """,
+        status,
+        bookingId);
+    return rows > 0;
+  }
+
+  private SessionRecord mapSessionRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+    return new SessionRecord(
+        rs.getString("id"),
+        rs.getString("participant_name"),
+        rs.getString("student_id"),
+        rs.getString("student_name"),
+        rs.getString("tutor_id"),
+        rs.getString("tutor_name"),
+        rs.getString("subject"),
+        rs.getString("status"),
+        rs.getString("session_date"),
+        rs.getString("day_of_week"),
+        rs.getString("start_time"),
+        rs.getString("end_time"),
+        rs.getString("note"));
+  }
+
   public void replaceAvailabilitySlots(String tutorId, List<AvailabilitySlotRecord> slots) {
     jdbcTemplate.update("DELETE FROM availability_slots WHERE tutor_id = CAST(? AS uuid)", tutorId);
 
@@ -450,5 +544,21 @@ public class UserRepository {
       String subject,
       String status,
       String sessionDate) {
+  }
+
+  public record SessionRecord(
+      String id,
+      String participantName,
+      String studentId,
+      String studentName,
+      String tutorId,
+      String tutorName,
+      String subject,
+      String status,
+      String sessionDate,
+      String dayOfWeek,
+      String startTime,
+      String endTime,
+      String note) {
   }
 }

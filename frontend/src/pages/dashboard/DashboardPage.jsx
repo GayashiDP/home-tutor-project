@@ -84,8 +84,17 @@ export default function DashboardPage({ role }) {
           )}
 
           <div className="dashboard-action-card dashboard-status-card">
-            <span>Session</span>
-            <strong>Active</strong>
+            <span>Sessions</span>
+            <strong>Track lessons</strong>
+            <p>View upcoming and past tutoring sessions with status updates.</p>
+            <Link className="secondary-link-button" to="/sessions">
+              My Sessions
+            </Link>
+          </div>
+
+          <div className="dashboard-action-card dashboard-status-card">
+            <span>Account</span>
+            <strong>Secure session</strong>
             <p>Use logout when you are done on this device.</p>
             <button type="button" className="danger-button" onClick={logout}>
               Logout

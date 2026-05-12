@@ -16,8 +16,10 @@ export default function SubjectManagerPage() {
   const { user } = useAuth();
   const [subjects, setSubjects] = useState([]);
   const [form, setForm] = useState(emptyForm);
+  const [subjectToDelete, setSubjectToDelete] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
   const loadSubjects = useCallback(async () => {
@@ -76,15 +78,16 @@ export default function SubjectManagerPage() {
     }
   };
 
-  const handleDelete = async (subject) => {
-    const confirmed = window.confirm(`Remove "${subject.name}" from your tutor listing?`);
-    if (!confirmed) {
+  const handleDelete = async () => {
+    if (!subjectToDelete) {
       return;
     }
 
     try {
-      await deleteSubject(subject.id);
-      setSubjects((current) => current.filter((item) => item.id !== subject.id));
+      setDeleting(true);
+      await deleteSubject(subjectToDelete.id);
+      setSubjects((current) => current.filter((item) => item.id !== subjectToDelete.id));
+      setSubjectToDelete(null);
       toast.success('Subject removed successfully');
     } catch (err) {
       const message = axios.isAxiosError(err)
@@ -92,6 +95,8 @@ export default function SubjectManagerPage() {
         : 'Unable to remove subject';
       setError(message);
       toast.error(message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -193,7 +198,7 @@ export default function SubjectManagerPage() {
                     <button
                       type="button"
                       className="danger-button"
-                      onClick={() => handleDelete(subject)}
+                      onClick={() => setSubjectToDelete(subject)}
                     >
                       Delete
                     </button>
@@ -204,6 +209,40 @@ export default function SubjectManagerPage() {
           </section>
         </div>
       </section>
+
+      {subjectToDelete && (
+        <div className="session-detail-backdrop" role="presentation">
+          <section className="session-confirm-modal" aria-labelledby="delete-subject-title">
+            <header>
+              <p className="eyebrow">Remove Subject</p>
+              <h2 id="delete-subject-title">Remove {subjectToDelete.name}?</h2>
+              <p>
+                This subject will be removed from your active tutor listing and no longer appear in catalog filters.
+              </p>
+            </header>
+
+            <div className="session-confirm-summary">
+              <strong>{subjectToDelete.name}</strong>
+              <span>{subjectToDelete.gradeLevel || 'No grade level set'}</span>
+              <span>{subjectToDelete.description || 'No description added'}</span>
+            </div>
+
+            <div className="session-detail-actions">
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setSubjectToDelete(null)}
+                disabled={deleting}
+              >
+                Keep Subject
+              </button>
+              <button type="button" className="danger-button" onClick={handleDelete} disabled={deleting}>
+                {deleting ? 'Removing...' : 'Confirm Remove'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   );
 }

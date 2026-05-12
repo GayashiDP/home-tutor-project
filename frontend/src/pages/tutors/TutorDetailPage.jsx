@@ -11,6 +11,23 @@ const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 const hours = Array.from({ length: 12 }, (_, index) => index + 8);
 const padHour = (hour) => `${String(hour).padStart(2, '0')}:00`;
 
+const nextDateFor = (dayName) => {
+  const targetIndex = days.indexOf(dayName);
+  const today = new Date();
+  const currentIndex = (today.getDay() + 6) % 7;
+  const daysUntilTarget = (targetIndex - currentIndex + 7) % 7;
+  const nextDate = new Date(today);
+  nextDate.setDate(today.getDate() + daysUntilTarget);
+  return nextDate;
+};
+
+const formatDate = (date) => new Intl.DateTimeFormat(undefined, {
+  weekday: 'long',
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+}).format(date);
+
 export default function TutorDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -20,7 +37,11 @@ export default function TutorDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [bookingSlotId, setBookingSlotId] = useState(null);
-  const [bookingFeedback, setBookingFeedback] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [bookingSubject, setBookingSubject] = useState('');
+  const [bookingNote, setBookingNote] = useState('');
+  const [bookingConfirmed, setBookingConfirmed] = useState(false);
+  const [bookingConfirmation, setBookingConfirmation] = useState(null);
   const [bookingError, setBookingError] = useState(null);
 
   const setSampleTutor = useCallback(() => {
@@ -78,7 +99,7 @@ export default function TutorDetailPage() {
   const availableSlotCount = availability.filter((slot) => slot.status === 'available').length;
   const bookedSlotCount = availability.filter((slot) => slot.status === 'booked').length;
 
-  const handleBookSlot = async (slot) => {
+  const openBookingForm = (slot) => {
     if (!slot || slot.status !== 'available') {
       return;
     }
@@ -90,20 +111,50 @@ export default function TutorDetailPage() {
 
     if (user.role !== 'Student') {
       setBookingError('Only students can book tutor sessions.');
-      setBookingFeedback(null);
+      return;
+    }
+
+    setSelectedSlot(slot);
+    setBookingSubject(tutor.subjects?.[0]?.name || 'General Tutoring');
+    setBookingNote('');
+    setBookingConfirmed(false);
+    setBookingConfirmation(null);
+    setBookingError(null);
+  };
+
+  const closeBookingForm = () => {
+    setSelectedSlot(null);
+    setBookingSubject('');
+    setBookingNote('');
+    setBookingConfirmed(false);
+    setBookingError(null);
+  };
+
+  const handleSubmitBooking = async (event) => {
+    event.preventDefault();
+
+    if (!selectedSlot || !bookingConfirmed) {
       return;
     }
 
     try {
-      setBookingSlotId(slot.id);
+      setBookingSlotId(selectedSlot.id);
       setBookingError(null);
-      setBookingFeedback(null);
-      await createBooking({
+      const response = await createBooking({
         tutorId: id,
-        slotId: slot.id,
-        subject: tutor.subjects?.[0]?.name || 'General Tutoring',
+        slotId: selectedSlot.id,
+        subject: bookingSubject,
+        note: bookingNote,
       });
-      setBookingFeedback('Booking request sent. This slot is now marked unavailable.');
+      setBookingConfirmation({
+        ...response.data.booking,
+        tutorName: tutor.name,
+        dayOfWeek: selectedSlot.dayOfWeek,
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
+        timezone,
+      });
+      setSelectedSlot(null);
       await fetchTutorDetail();
     } catch (err) {
       setBookingError(err.response?.data?.error || 'Unable to book this slot. Please try another time.');
@@ -253,7 +304,19 @@ export default function TutorDetailPage() {
           <p className="availability-help">
             Times shown in {timezone}. Green slots are available; grey slots are unavailable or already booked.
           </p>
-          {bookingFeedback && <p className="booking-feedback">{bookingFeedback}</p>}
+          {bookingConfirmation && (
+            <section className="booking-confirmation-panel" aria-live="polite">
+              <div>
+                <p className="booking-confirmation-kicker">Booking Submitted</p>
+                <h3>Session request is pending</h3>
+                <p>
+                  {bookingConfirmation.tutorName} · {bookingConfirmation.subject} · {bookingConfirmation.dayOfWeek},{' '}
+                  {bookingConfirmation.startTime}-{bookingConfirmation.endTime} ({bookingConfirmation.timezone})
+                </p>
+              </div>
+              <strong>{bookingConfirmation.status}</strong>
+            </section>
+          )}
           {bookingError && <p className="booking-error">{bookingError}</p>}
           <div className="student-calendar" aria-label="Tutor weekly availability">
             <div className="calendar-corner" />
@@ -276,7 +339,7 @@ export default function TutorDetailPage() {
                       className={`student-calendar-slot ${isAvailable ? 'student-calendar-available' : ''} ${isBooked ? 'student-calendar-booked' : ''}`}
                       disabled={!isAvailable || isBusy}
                       key={`${day}-${hour}`}
-                      onClick={() => handleBookSlot(slot)}
+                      onClick={() => openBookingForm(slot)}
                       type="button"
                     >
                       {isBusy ? 'Booking...' : isAvailable ? 'Book' : isBooked ? 'Booked' : 'Unavailable'}
@@ -328,6 +391,72 @@ export default function TutorDetailPage() {
           </div>
         </section>
       </div>
+
+      {selectedSlot && (
+        <div className="booking-modal-backdrop" role="presentation">
+          <form className="booking-modal" onSubmit={handleSubmitBooking} aria-labelledby="booking-modal-title">
+            <header>
+              <p className="booking-confirmation-kicker">Confirm Lesson</p>
+              <h2 id="booking-modal-title">Book a tutoring session</h2>
+              <p>Review the lesson details before sending your pending booking request.</p>
+            </header>
+
+            <div className="booking-details-grid">
+              <article>
+                <span>Tutor</span>
+                <strong>{tutor.name}</strong>
+              </article>
+              <article>
+                <span>Date</span>
+                <strong>{formatDate(nextDateFor(selectedSlot.dayOfWeek))}</strong>
+              </article>
+              <article>
+                <span>Time</span>
+                <strong>{selectedSlot.startTime}-{selectedSlot.endTime}</strong>
+                <small>{timezone}</small>
+              </article>
+              <label className="booking-subject-field">
+                <span>Subject</span>
+                <select value={bookingSubject} onChange={(event) => setBookingSubject(event.target.value)} required>
+                  {(tutor.subjects?.length ? tutor.subjects : [{ name: 'General Tutoring' }]).map((subject) => (
+                    <option key={subject.id || subject.name} value={subject.name}>{subject.name}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label className="booking-note-field">
+              <span>Lesson note</span>
+              <textarea
+                value={bookingNote}
+                onChange={(event) => setBookingNote(event.target.value)}
+                placeholder="Optional: share the topic or goal for this lesson."
+                rows={4}
+              />
+            </label>
+
+            <label className="booking-confirm-check">
+              <input
+                type="checkbox"
+                checked={bookingConfirmed}
+                onChange={(event) => setBookingConfirmed(event.target.checked)}
+              />
+              <span>I confirm these booking details and want to send this request.</span>
+            </label>
+
+            {bookingError && <p className="booking-error">{bookingError}</p>}
+
+            <div className="booking-modal-actions">
+              <button type="button" className="btn-secondary" onClick={closeBookingForm} disabled={Boolean(bookingSlotId)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary" disabled={!bookingConfirmed || Boolean(bookingSlotId)}>
+                {bookingSlotId ? 'Submitting...' : 'Submit Booking'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

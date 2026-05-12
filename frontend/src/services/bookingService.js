@@ -7,3 +7,9 @@ export const createBooking = ({ tutorId, slotId, subject, note }) =>
     subject,
     note,
   });
+
+export const getMySessions = () => api.get('/bookings/mine');
+
+export const getSessionDetail = (bookingId) => api.get(`/bookings/${bookingId}`);
+
+export const cancelBooking = (bookingId) => api.patch(`/bookings/${bookingId}/cancel`);

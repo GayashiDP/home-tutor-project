@@ -5,6 +5,8 @@ import com.hometutor.auth.exception.DuplicateEmailException;
 import com.hometutor.auth.exception.InvalidCredentialsException;
 import com.hometutor.availability.exception.AvailabilitySlotNotFoundException;
 import com.hometutor.availability.exception.ConfirmedBookingConflictException;
+import com.hometutor.booking.exception.BookingCancellationException;
+import com.hometutor.booking.exception.BookingNotFoundException;
 import com.hometutor.booking.exception.SlotUnavailableException;
 import com.hometutor.booking.exception.StudentOnlyBookingException;
 import com.hometutor.profile.exception.ProfileNotFoundException;
@@ -103,6 +105,18 @@ public class ApiExceptionHandler {
   public ResponseEntity<Map<String, String>> handleStudentOnlyBooking() {
     return ResponseEntity.status(HttpStatus.FORBIDDEN)
         .body(Map.of("error", "Only students can book tutor sessions"));
+  }
+
+  @ExceptionHandler(BookingNotFoundException.class)
+  public ResponseEntity<Map<String, String>> handleBookingNotFound() {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(Map.of("error", "Session not found"));
+  }
+
+  @ExceptionHandler(BookingCancellationException.class)
+  public ResponseEntity<Map<String, String>> handleBookingCancellation(BookingCancellationException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(Map.of("error", exception.getMessage()));
   }
 
   @ExceptionHandler(SlotUnavailableException.class)
