@@ -36,6 +36,11 @@ export default function Navbar() {
                 <Link to="/sessions" className="app-navbar-link">
                   Sessions
                 </Link>
+                {user.role === 'Student' && (
+                  <Link to="/transactions" className="app-navbar-link">
+                    Payments
+                  </Link>
+                )}
                 {user.role === 'Tutor' && (
                   <>
                     <Link to="/tutor/subjects" className="app-navbar-link">
@@ -117,6 +122,15 @@ export default function Navbar() {
                 >
                   Sessions
                 </Link>
+                {user.role === 'Student' && (
+                  <Link
+                    to="/transactions"
+                    className="app-navbar-mobile-link"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Payments
+                  </Link>
+                )}
                 {user.role === 'Tutor' && (
                   <>
                     <Link

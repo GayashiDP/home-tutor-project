@@ -405,7 +405,14 @@ public class UserRepository {
                student_user.name AS student_name,
                b.tutor_id::text AS tutor_id,
                tutor_user.name AS tutor_name,
-               other_user.name AS participant_name
+               tutor_user.hourly_rate AS hourly_rate,
+               other_user.name AS participant_name,
+               EXISTS (
+                 SELECT 1
+                 FROM reviews r
+                 WHERE r.booking_id = b.id
+                   AND r.student_id = b.student_id
+               ) AS reviewed
         FROM bookings b
         LEFT JOIN availability_slots s ON s.id = b.slot_id
         JOIN users student_user ON student_user.id = b.student_id
@@ -434,7 +441,14 @@ public class UserRepository {
                student_user.name AS student_name,
                b.tutor_id::text AS tutor_id,
                tutor_user.name AS tutor_name,
-               other_user.name AS participant_name
+               tutor_user.hourly_rate AS hourly_rate,
+               other_user.name AS participant_name,
+               EXISTS (
+                 SELECT 1
+                 FROM reviews r
+                 WHERE r.booking_id = b.id
+                   AND r.student_id = b.student_id
+               ) AS reviewed
         FROM bookings b
         LEFT JOIN availability_slots s ON s.id = b.slot_id
         JOIN users student_user ON student_user.id = b.student_id
@@ -454,6 +468,66 @@ public class UserRepository {
     return findSessionByIdForUser(studentId, "Student", bookingId);
   }
 
+  public boolean reviewExistsForBookingAndStudent(String bookingId, String studentId) {
+    Integer count = jdbcTemplate.queryForObject(
+        """
+        SELECT COUNT(*)
+        FROM reviews
+        WHERE booking_id = CAST(? AS uuid)
+          AND student_id = CAST(? AS uuid)
+        """,
+        Integer.class,
+        bookingId,
+        studentId);
+    return count != null && count > 0;
+  }
+
+  public ReviewRecord createReview(String bookingId, String studentId, String tutorId, int rating, String comment) {
+    String id = UUID.randomUUID().toString();
+    jdbcTemplate.update(
+        """
+        INSERT INTO reviews (id, booking_id, student_id, tutor_id, rating, comment)
+        VALUES (CAST(? AS uuid), CAST(? AS uuid), CAST(? AS uuid), CAST(? AS uuid), ?, ?)
+        """,
+        id,
+        bookingId,
+        studentId,
+        tutorId,
+        rating,
+        comment);
+
+    return findReviewById(id).orElseThrow();
+  }
+
+  public Optional<ReviewRecord> findReviewById(String id) {
+    return jdbcTemplate.query(
+        """
+        SELECT r.id, r.booking_id::text, r.student_id::text, student_user.name AS student_name,
+               r.tutor_id::text, r.rating, COALESCE(r.comment, '') AS comment, r.created_at::text
+        FROM reviews r
+        JOIN users student_user ON student_user.id = r.student_id
+        WHERE r.id = CAST(? AS uuid)
+        """,
+        this::mapReviewRecord,
+        id)
+        .stream()
+        .findFirst();
+  }
+
+  public List<ReviewRecord> findReviewsByTutorId(String tutorId) {
+    return jdbcTemplate.query(
+        """
+        SELECT r.id, r.booking_id::text, r.student_id::text, student_user.name AS student_name,
+               r.tutor_id::text, r.rating, COALESCE(r.comment, '') AS comment, r.created_at::text
+        FROM reviews r
+        JOIN users student_user ON student_user.id = r.student_id
+        WHERE r.tutor_id = CAST(? AS uuid)
+        ORDER BY r.created_at DESC
+        """,
+        this::mapReviewRecord,
+        tutorId);
+  }
+
   public boolean updateBookingStatus(String bookingId, String status) {
     int rows = jdbcTemplate.update(
         """
@@ -466,6 +540,119 @@ public class UserRepository {
     return rows > 0;
   }
 
+  public PaymentRecord createPayment(
+      String bookingId,
+      String studentId,
+      java.math.BigDecimal amount,
+      String status,
+      String receiptNo) {
+    String id = UUID.randomUUID().toString();
+    jdbcTemplate.update(
+        """
+        INSERT INTO payments (id, booking_id, student_id, amount, status, receipt_no, paid_at)
+        VALUES (CAST(? AS uuid), CAST(? AS uuid), CAST(? AS uuid), ?, ?, ?, CURRENT_TIMESTAMP)
+        """,
+        id,
+        bookingId,
+        studentId,
+        amount,
+        status,
+        receiptNo);
+
+    return jdbcTemplate.queryForObject(
+        """
+        SELECT id, booking_id::text, student_id::text, amount, status, receipt_no, paid_at::text
+        FROM payments
+        WHERE id = CAST(? AS uuid)
+        """,
+        (rs, rowNum) -> new PaymentRecord(
+            rs.getString("id"),
+            rs.getString("booking_id"),
+            rs.getString("student_id"),
+            rs.getBigDecimal("amount"),
+            rs.getString("status"),
+            rs.getString("receipt_no"),
+            rs.getString("paid_at")),
+        id);
+  }
+
+  public ReceiptRecord createReceipt(
+      String bookingId,
+      String paymentId,
+      String receiptNo,
+      java.math.BigDecimal amount) {
+    String id = UUID.randomUUID().toString();
+    jdbcTemplate.update(
+        """
+        INSERT INTO receipts (id, booking_id, payment_id, receipt_no, amount)
+        VALUES (CAST(? AS uuid), CAST(? AS uuid), CAST(? AS uuid), ?, ?)
+        """,
+        id,
+        bookingId,
+        paymentId,
+        receiptNo,
+        amount);
+
+    return jdbcTemplate.queryForObject(
+        """
+        SELECT id, booking_id::text, payment_id::text, receipt_no, amount, issued_at::text
+        FROM receipts
+        WHERE id = CAST(? AS uuid)
+        """,
+        (rs, rowNum) -> new ReceiptRecord(
+            rs.getString("id"),
+            rs.getString("booking_id"),
+            rs.getString("payment_id"),
+            rs.getString("receipt_no"),
+            rs.getBigDecimal("amount"),
+            rs.getString("issued_at")),
+        id);
+  }
+
+  public List<TransactionRecord> findPaymentsByStudentId(String studentId) {
+    return jdbcTemplate.query(
+        """
+        SELECT p.id, p.booking_id::text, p.student_id::text, p.amount, p.status, p.receipt_no,
+               p.paid_at::text, p.created_at::text,
+               b.subject, b.session_date::text, b.status AS booking_status,
+               COALESCE(s.start_time::text, '') AS start_time,
+               COALESCE(s.end_time::text, '') AS end_time,
+               tutor_user.name AS tutor_name,
+               student_user.name AS student_name,
+               COALESCE(r.id::text, '') AS receipt_id,
+               COALESCE(r.receipt_no, p.receipt_no, '') AS generated_receipt_no,
+               COALESCE(r.issued_at::text, '') AS issued_at
+        FROM payments p
+        JOIN bookings b ON b.id = p.booking_id
+        JOIN users student_user ON student_user.id = b.student_id
+        JOIN users tutor_user ON tutor_user.id = b.tutor_id
+        LEFT JOIN availability_slots s ON s.id = b.slot_id
+        LEFT JOIN receipts r ON r.payment_id = p.id
+        WHERE p.student_id = CAST(? AS uuid)
+        ORDER BY COALESCE(p.paid_at, p.created_at) DESC
+        """,
+        (rs, rowNum) -> new TransactionRecord(
+            rs.getString("id"),
+            rs.getString("booking_id"),
+            rs.getString("student_id"),
+            rs.getBigDecimal("amount"),
+            rs.getString("status"),
+            rs.getString("receipt_no"),
+            rs.getString("paid_at"),
+            rs.getString("created_at"),
+            rs.getString("subject"),
+            rs.getString("session_date"),
+            rs.getString("start_time"),
+            rs.getString("end_time"),
+            rs.getString("tutor_name"),
+            rs.getString("student_name"),
+            rs.getString("booking_status"),
+            rs.getString("receipt_id"),
+            rs.getString("generated_receipt_no"),
+            rs.getString("issued_at")),
+        studentId);
+  }
+
   private SessionRecord mapSessionRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
     return new SessionRecord(
         rs.getString("id"),
@@ -474,13 +661,27 @@ public class UserRepository {
         rs.getString("student_name"),
         rs.getString("tutor_id"),
         rs.getString("tutor_name"),
+        rs.getBigDecimal("hourly_rate"),
         rs.getString("subject"),
         rs.getString("status"),
         rs.getString("session_date"),
         rs.getString("day_of_week"),
         rs.getString("start_time"),
         rs.getString("end_time"),
-        rs.getString("note"));
+        rs.getString("note"),
+        rs.getBoolean("reviewed"));
+  }
+
+  private ReviewRecord mapReviewRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+    return new ReviewRecord(
+        rs.getString("id"),
+        rs.getString("booking_id"),
+        rs.getString("student_id"),
+        rs.getString("student_name"),
+        rs.getString("tutor_id"),
+        rs.getInt("rating"),
+        rs.getString("comment"),
+        rs.getString("created_at"));
   }
 
   public void replaceAvailabilitySlots(String tutorId, List<AvailabilitySlotRecord> slots) {
@@ -553,12 +754,65 @@ public class UserRepository {
       String studentName,
       String tutorId,
       String tutorName,
+      java.math.BigDecimal hourlyRate,
       String subject,
       String status,
       String sessionDate,
       String dayOfWeek,
       String startTime,
       String endTime,
-      String note) {
+      String note,
+      boolean reviewed) {
+  }
+
+  public record ReviewRecord(
+      String id,
+      String bookingId,
+      String studentId,
+      String studentName,
+      String tutorId,
+      int rating,
+      String comment,
+      String createdAt) {
+  }
+
+  public record PaymentRecord(
+      String id,
+      String bookingId,
+      String studentId,
+      java.math.BigDecimal amount,
+      String status,
+      String receiptNo,
+      String paidAt) {
+  }
+
+  public record ReceiptRecord(
+      String id,
+      String bookingId,
+      String paymentId,
+      String receiptNo,
+      java.math.BigDecimal amount,
+      String issuedAt) {
+  }
+
+  public record TransactionRecord(
+      String id,
+      String bookingId,
+      String studentId,
+      java.math.BigDecimal amount,
+      String status,
+      String receiptNo,
+      String paidAt,
+      String createdAt,
+      String subject,
+      String sessionDate,
+      String startTime,
+      String endTime,
+      String tutorName,
+      String studentName,
+      String bookingStatus,
+      String receiptId,
+      String generatedReceiptNo,
+      String issuedAt) {
   }
 }

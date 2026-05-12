@@ -3,13 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import api from '../utils/api';
 
+interface Subject {
+  name: string;
+  id?: string;
+}
+
 interface Tutor {
   id: string;
   name: string;
   bio: string;
   hourly_rate: number;
   role: string;
-  subjects?: Array<{ name: string }>;
+  email?: string;
+  subjects?: Subject[];
   rating?: number;
   reviewCount?: number;
 }
