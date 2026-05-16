@@ -33,7 +33,7 @@ public class SaveAvailabilityRequest {
   public static class AvailabilitySlotRequest {
 
     // Stores the day of the week, example: Monday
-    // @NotBlank means this field cannot be empty or blank
+    // @NotBlank means this field cannot be blank
     @NotBlank(message = "Day is required")
     private String dayOfWeek;
 
@@ -57,7 +57,6 @@ public class SaveAvailabilityRequest {
       this.dayOfWeek = dayOfWeek;
     }
 
-    // Getter method to return startTime
     public String getStartTime() {
       return startTime;
     }
