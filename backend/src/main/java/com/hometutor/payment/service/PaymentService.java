@@ -213,6 +213,7 @@ public class PaymentService {
     data.put("bookingStatus", transaction.bookingStatus());
     return data;
   }
+//bug fix ,fixing syntax error
 
   private Map<String, Object> toMap(PaymentApprovalRecord payment) {
     Map<String, Object> data = new LinkedHashMap<>();
