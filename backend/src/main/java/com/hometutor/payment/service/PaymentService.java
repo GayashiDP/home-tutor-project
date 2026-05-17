@@ -155,7 +155,7 @@ public class PaymentService {
     data.put("bookingStatus", transaction.bookingStatus());
     return data;
   }
-
+//bug fix ,fixing syntax error
   private Map<String, Object> toSessionMap(SessionRecord session) {
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("id", session.id());
