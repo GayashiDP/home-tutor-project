@@ -183,6 +183,8 @@ public class AvailabilityService {
 
   // Converts slot record into API response format
   private Map<String, Object> toMap(AvailabilitySlotRecord slot, Set<String> bookedSlotIds) {
+     
+    // Override status to "booked" if slot is already reserved
     String status = bookedSlotIds.contains(slot.id())
         ? "booked"
         : slot.status() == null ? "available" : slot.status();
