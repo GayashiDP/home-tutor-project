@@ -1,5 +1,12 @@
 package com.hometutor.profile.controller;
 
+//feat: implement ProfileController for user profile management
+//Add GET endpoint to retrieve user profile details using auth token
+//Add PATCH endpoint to update profile attributes with request validation
+//Integrate AuthService for user ID extraction and session refreshing
+//Connect profile service layer for state modifications  
+
+
 import com.hometutor.auth.service.AuthService;
 import com.hometutor.profile.dto.UpdateProfileRequest;
 import com.hometutor.profile.service.ProfileService;
