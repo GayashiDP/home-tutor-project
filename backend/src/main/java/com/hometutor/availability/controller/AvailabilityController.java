@@ -41,7 +41,7 @@ public class AvailabilityController {
   private final AvailabilityService availabilityService;
 
   // Constructor injection:
-  // Spring automatically provides AuthService and AvailabilityService objects here.
+  // Spring automatically provides AuthService and AvailabilityService objects
   public AvailabilityController(AuthService authService, AvailabilityService availabilityService) {
     this.authService = authService;
     this.availabilityService = availabilityService;
