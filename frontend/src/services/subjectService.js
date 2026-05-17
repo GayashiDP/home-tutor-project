@@ -1,12 +1,5 @@
 import api from './api';
-
-export const getMySubjects = () => api.get('/subjects/mine');
-
-export const createSubject = (data) =>
-  api.post('/subjects', {
-    name: data.name,
-    description: data.description,
-    gradeLevel: data.gradeLevel,
-  });
-
+export const getMySubjects = () => api.get('/subjects/my');
+export const createSubject = (data) => api.post('/subjects', data);
+export const updateSubject = (id, data) => api.put(`/subjects/${id}`, data);
 export const deleteSubject = (id) => api.delete(`/subjects/${id}`);

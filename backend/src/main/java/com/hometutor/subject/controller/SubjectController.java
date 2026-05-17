@@ -27,7 +27,7 @@ public class SubjectController {
     this.subjectService = subjectService;
   }
 
-  @GetMapping("/mine")
+  @GetMapping({"/mine", "/my"})
   public ResponseEntity<Map<String, Object>> getMySubjects(
       @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
     String userId = authService.requireUserId(authorizationHeader);

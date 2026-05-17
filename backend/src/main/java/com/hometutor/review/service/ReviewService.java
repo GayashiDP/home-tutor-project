@@ -3,6 +3,7 @@ package com.hometutor.review.service;
 import com.hometutor.booking.exception.BookingNotFoundException;
 import com.hometutor.review.dto.CreateReviewRequest;
 import com.hometutor.review.exception.DuplicateReviewException;
+import com.hometutor.review.exception.ReviewNotFoundException;
 import com.hometutor.review.exception.ReviewNotAllowedException;
 import com.hometutor.tutor.exception.TutorNotFoundException;
 import com.hometutor.user.UserRepository;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReviewService {
@@ -74,6 +76,41 @@ public class ReviewService {
         "stats", Map.of("average", average, "count", reviews.size()));
   }
 
+  public Map<String, Object> getAllReviews(String userId) {
+    UserRecord user = userRepository.findById(userId)
+        .orElseThrow(() -> new ReviewNotAllowedException("Only admins can manage reviews"));
+
+    requireAdmin(user);
+
+    return Map.of("reviews", userRepository.findAllReviewsForAdmin().stream().map(this::toMap).toList());
+  }
+
+  @Transactional
+  public Map<String, Object> deleteReview(String userId, String reviewId) {
+    UserRecord user = userRepository.findById(userId)
+        .orElseThrow(() -> new ReviewNotAllowedException("Only admins can manage reviews"));
+
+    requireAdmin(user);
+
+    ReviewRecord review = userRepository.findReviewById(reviewId)
+        .orElseThrow(ReviewNotFoundException::new);
+
+    userRepository.deleteReviewById(review.id());
+    userRepository.createAuditLog(user.id(), "DELETE_REVIEW", "reviews", review.id(),
+        "Deleted review for booking " + review.bookingId() + " from tutor " + review.tutorName());
+
+    return Map.of(
+        "message", "Review deleted successfully",
+        "reviewId", review.id(),
+        "tutorId", review.tutorId());
+  }
+
+  private void requireAdmin(UserRecord user) {
+    if (!"Admin".equals(user.role())) {
+      throw new ReviewNotAllowedException("Only admins can manage reviews");
+    }
+  }
+
   private Map<String, Object> toMap(ReviewRecord review) {
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("id", review.id());
@@ -81,6 +118,8 @@ public class ReviewService {
     data.put("studentId", review.studentId());
     data.put("studentName", review.studentName());
     data.put("tutorId", review.tutorId());
+    data.put("tutorName", review.tutorName());
+    data.put("subject", review.subject());
     data.put("rating", review.rating());
     data.put("comment", review.comment() == null ? "" : review.comment());
     data.put("createdAt", review.createdAt());

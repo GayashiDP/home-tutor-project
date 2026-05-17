@@ -1,5 +1,7 @@
 package com.hometutor.shared.exception;
 
+import com.hometutor.admin.exception.AdminAccessException;
+import com.hometutor.auth.exception.AccountSuspendedException;
 import com.hometutor.auth.exception.AuthenticationRequiredException;
 import com.hometutor.auth.exception.DuplicateEmailException;
 import com.hometutor.auth.exception.InvalidCredentialsException;
@@ -12,6 +14,7 @@ import com.hometutor.booking.exception.StudentOnlyBookingException;
 import com.hometutor.payment.exception.PaymentFailedException;
 import com.hometutor.profile.exception.ProfileNotFoundException;
 import com.hometutor.review.exception.DuplicateReviewException;
+import com.hometutor.review.exception.ReviewNotFoundException;
 import com.hometutor.review.exception.ReviewNotAllowedException;
 import com.hometutor.subject.exception.DuplicateSubjectException;
 import com.hometutor.subject.exception.SubjectNotFoundException;
@@ -54,6 +57,12 @@ public class ApiExceptionHandler {
   public ResponseEntity<Map<String, String>> handleInvalidCredentials() {
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
         .body(Map.of("error", "Invalid email or password"));
+  }
+
+  @ExceptionHandler(AccountSuspendedException.class)
+  public ResponseEntity<Map<String, String>> handleAccountSuspended() {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(Map.of("error", "This account is suspended"));
   }
 
   @ExceptionHandler(AuthenticationRequiredException.class)
@@ -142,6 +151,18 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(ReviewNotAllowedException.class)
   public ResponseEntity<Map<String, String>> handleReviewNotAllowed(ReviewNotAllowedException exception) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(Map.of("error", exception.getMessage()));
+  }
+
+  @ExceptionHandler(ReviewNotFoundException.class)
+  public ResponseEntity<Map<String, String>> handleReviewNotFound() {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .body(Map.of("error", "Review not found"));
+  }
+
+  @ExceptionHandler(AdminAccessException.class)
+  public ResponseEntity<Map<String, String>> handleAdminAccess(AdminAccessException exception) {
     return ResponseEntity.status(HttpStatus.FORBIDDEN)
         .body(Map.of("error", exception.getMessage()));
   }

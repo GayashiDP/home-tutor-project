@@ -2,6 +2,7 @@ package com.hometutor.auth.service;
 
 import com.hometutor.auth.dto.LoginRequest;
 import com.hometutor.auth.dto.RegisterRequest;
+import com.hometutor.auth.exception.AccountSuspendedException;
 import com.hometutor.auth.exception.AuthenticationRequiredException;
 import com.hometutor.auth.exception.DuplicateEmailException;
 import com.hometutor.auth.exception.InvalidCredentialsException;
@@ -56,7 +57,8 @@ public class AuthService {
         "id", id,
         "name", request.getFullName().trim(),
         "email", email,
-        "role", request.getRole());
+        "role", request.getRole(),
+        "status", "Active");
   }
 
   public Map<String, Object> login(LoginRequest request) {
@@ -68,12 +70,17 @@ public class AuthService {
       throw new InvalidCredentialsException();
     }
 
+    if ("Suspended".equals(user.status())) {
+      throw new AccountSuspendedException();
+    }
+
     Map<String, Object> publicUser = Map.of(
         "id", user.id(),
         "name", user.name(),
         "email", user.email(),
         "role", user.role(),
-        "bio", user.bio() == null ? "" : user.bio());
+        "bio", user.bio() == null ? "" : user.bio(),
+        "status", user.status());
     String token = createJwt(user);
 
     return Map.of("token", token, "user", publicUser);

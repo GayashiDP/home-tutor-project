@@ -1,16 +1,6 @@
 import api from './api';
-
-export const registerUser = (data) =>
-  api.post('/auth/register', {
-    fullName: data.fullName,
-    email: data.email,
-    password: data.password,
-    confirmPassword: data.confirmPassword,
-    role: data.role,
-  });
-
-export const loginUser = (data) =>
-  api.post('/auth/login', {
-    email: data.email,
-    password: data.password,
-  });
+export const loginUser = (data) => api.post('/auth/login', data);
+export const registerUser = (data) => api.post('/auth/register', data);
+export const logoutUser = () => api.post('/auth/logout');
+export const getProfile = () => api.get('/profile');
+export const updateUserProfile = (data) => api.patch('/profile', data);

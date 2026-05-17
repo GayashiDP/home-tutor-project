@@ -8,6 +8,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,6 +27,7 @@ public class ReviewController {
     this.reviewService = reviewService;
   }
 
+  // ResponseEntity method 
   @PostMapping
   public ResponseEntity<Map<String, Object>> createReview(
       @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
@@ -37,5 +39,20 @@ public class ReviewController {
   @GetMapping("/tutors/{tutorId}")
   public ResponseEntity<Map<String, Object>> getTutorReviews(@PathVariable String tutorId) {
     return ResponseEntity.ok(reviewService.getTutorReviews(tutorId));
+  }
+
+  @GetMapping
+  public ResponseEntity<Map<String, Object>> getAllReviews(
+      @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+    String userId = authService.requireUserId(authorizationHeader);
+    return ResponseEntity.ok(reviewService.getAllReviews(userId));
+  }
+
+  @DeleteMapping("/{reviewId}")
+  public ResponseEntity<Map<String, Object>> deleteReview(
+      @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+      @PathVariable String reviewId) {
+    String userId = authService.requireUserId(authorizationHeader);
+    return ResponseEntity.ok(reviewService.deleteReview(userId, reviewId));
   }
 }

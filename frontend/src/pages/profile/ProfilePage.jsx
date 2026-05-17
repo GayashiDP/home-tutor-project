@@ -1,254 +1,53 @@
-import axios from 'axios';
-import { useEffect, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { useAuth } from '../../hooks/useAuth';
-
-const emptyForm = {
-  name: '',
-  bio: '',
-  subjects: [],
-};
-
-export default function ProfilePage() {
-  const { user, profile, loading, fetchProfile, updateProfile, logout } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [form, setForm] = useState(emptyForm);
-  const [newSubject, setNewSubject] = useState('');
-  const [pageError, setPageError] = useState('');
-
-  useEffect(() => {
-    if (!user || profile) {
-      return;
-    }
-
-    fetchProfile().catch((err) => {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.error || 'Unable to load profile'
-        : 'Unable to load profile';
-      setPageError(message);
-      toast.error(message);
-    });
-  }, [fetchProfile, profile, user]);
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const currentProfile = profile || user;
-  const subjects = currentProfile.subjects || [];
-  const dashboardPath = currentProfile.role === 'Tutor' ? '/tutor/dashboard' : '/student/dashboard';
-
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
-  };
-
-  const startEditing = () => {
-    setForm({
-      name: currentProfile.name || '',
-      bio: currentProfile.bio || '',
-      subjects: currentProfile.subjects || [],
-    });
-    setNewSubject('');
-    setIsEditing(true);
-  };
-
-  const addSubject = () => {
-    const subject = newSubject.trim();
-    if (!subject || form.subjects.includes(subject)) {
-      setNewSubject('');
-      return;
-    }
-
-    setForm((current) => ({ ...current, subjects: [...current.subjects, subject] }));
-    setNewSubject('');
-  };
-
-  const removeSubject = (subject) => {
-    setForm((current) => ({
-      ...current,
-      subjects: current.subjects.filter((item) => item !== subject),
-    }));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setPageError('');
-
-    try {
-      await updateProfile(form);
-      setIsEditing(false);
-      toast.success('Profile updated successfully');
-    } catch (err) {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.error || 'Unable to update profile'
-        : 'Unable to update profile';
-      setPageError(message);
-      toast.error(message);
-    }
-  };
-
-  return (
-    <main className="profile-page">
-      <ToastContainer position="top-right" autoClose={3000} />
-
-      <section className="profile-shell" aria-labelledby="profile-heading">
-        <div className="profile-topbar">
-          <Link to={dashboardPath}>Back to Dashboard</Link>
-          <button type="button" className="secondary-button" onClick={logout}>
-            Logout
-          </button>
+import {useState,useEffect} from 'react';import {Link} from 'react-router-dom';import {useAuth} from '../../hooks/useAuth';import api from '../../services/api';
+export default function ProfilePage(){
+  const {user}=useAuth(); const [editing,setEditing]=useState(false); const [form,setForm]=useState({name:'',bio:'',subjects:[]});const [ns,setNs]=useState('');const [saving,setSaving]=useState(false);
+  useEffect(()=>{api.get('/profile').then(r=>setForm({name:r.data.name||r.data.fullName||'',bio:r.data.bio||'',subjects:r.data.subjects||[]})).catch(()=>setForm({name:user?.name||user?.fullName||'',bio:'Passionate about learning and growing.',subjects:user?.role==='Tutor'?['Algebra','Calculus']:[]}));}, []);
+  const set=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const save=async()=>{setSaving(true);try{await api.patch('/profile',form);}catch{}setSaving(false);setEditing(false);};
+  const addSub=()=>{if(ns.trim()&&!form.subjects.includes(ns.trim())){set('subjects',[...form.subjects,ns.trim()]);setNs('');}};
+  const remSub=s=>set('subjects',form.subjects.filter(x=>x!==s));
+  const isTutor=user?.role==='Tutor'; const isAdmin=user?.role==='Admin'; const dn=form.name||user?.name||user?.fullName||'User';
+  const links=isTutor?[{l:'Manage Subjects',to:'/tutor/subjects'},{l:'Set Availability',to:'/tutor/availability'},{l:'View Sessions',to:'/sessions'}]:isAdmin?[{l:'User Management',to:'/admin/users'},{l:'Payment Approvals',to:'/admin/payments'},{l:'Review Moderation',to:'/admin/reviews'}]:[{l:'Browse Tutors',to:'/tutors'},{l:'My Sessions',to:'/sessions'},{l:'Transactions',to:'/transactions'}];
+  return(
+    <div className="page">
+      <div className="card" style={{borderRadius:0,border:'none'}}>
+        <div className="profile-hero">
+          <div className="profile-avatar-lg">{dn.charAt(0)}</div>
+          <div><h1>{dn}</h1><p>{user?.role} · {user?.email}</p>
+          {isTutor&&form.subjects.length>0&&<div style={{display:'flex',gap:5,marginTop:'.5rem',flexWrap:'wrap'}}>{form.subjects.map(s=><span key={s} className="subject-pill" style={{background:'rgba(255,255,255,.2)',color:'#fff'}}>{s}</span>)}</div>}
+          </div>
         </div>
-
-        <header className="profile-header">
-          <div className="profile-avatar" aria-hidden="true">
-            {currentProfile.name?.charAt(0)?.toUpperCase() || 'U'}
+      </div>
+      <div className="container section">
+        <div style={{display:'grid',gridTemplateColumns:'1fr 300px',gap:'1.5rem',alignItems:'flex-start'}}>
+          <div className="card"><div className="card-body">
+            <div className="section-header"><h2 className="section-title">Profile Information</h2><button className="btn btn-secondary btn-sm" onClick={()=>setEditing(!editing)}>{editing?'Cancel':'Edit Profile'}</button></div>
+            {!editing?<div>
+              {[{l:'Full Name',v:dn},{l:'Email',v:user?.email},{l:'Role',v:user?.role}].map(i=><div key={i.l} style={{marginBottom:'.9rem'}}><div style={{fontSize:'.75rem',color:'var(--text3)',marginBottom:'.2rem'}}>{i.l}</div><div style={{fontWeight:500,fontSize:'.9rem'}}>{i.v}</div></div>)}
+              <div style={{marginBottom:'.9rem'}}><div style={{fontSize:'.75rem',color:'var(--text3)',marginBottom:'.2rem'}}>Bio</div><div style={{color:'var(--text2)',lineHeight:1.6,fontSize:'.9rem'}}>{form.bio||'No bio added yet.'}</div></div>
+              {isTutor&&<div><div style={{fontSize:'.75rem',color:'var(--text3)',marginBottom:'.45rem'}}>Subjects</div><div style={{display:'flex',flexWrap:'wrap',gap:5}}>{form.subjects.length?form.subjects.map(s=><span key={s} className="subject-pill">{s}</span>):<span style={{color:'var(--text3)',fontSize:'.85rem'}}>No subjects added.</span>}</div></div>}
+            </div>:<div>
+              <div className="field"><label>Full Name</label><input value={form.name} onChange={e=>set('name',e.target.value)}/></div>
+              <div className="field"><label>Bio</label><textarea rows={3} value={form.bio} onChange={e=>set('bio',e.target.value)} placeholder="Tell students about your background…"/></div>
+              {isTutor&&<div className="field"><label>Subjects</label>
+                <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:'.5rem'}}>{form.subjects.map(s=><span key={s} className="subject-pill" style={{cursor:'pointer'}} onClick={()=>remSub(s)}>{s} ×</span>)}</div>
+                <div style={{display:'flex',gap:8}}><input value={ns} onChange={e=>setNs(e.target.value)} placeholder="Add a subject…" onKeyDown={e=>e.key==='Enter'&&(e.preventDefault(),addSub())} style={{flex:1,padding:'8px 12px',border:'1.5px solid var(--border)',borderRadius:'var(--radius-sm)',fontSize:'.85rem',fontFamily:'inherit',background:'var(--bg)'}}/><button type="button" className="btn btn-secondary btn-sm" onClick={addSub}>Add</button></div>
+              </div>}
+              <div style={{display:'flex',gap:8}}><button className="btn btn-primary btn-sm" onClick={save} disabled={saving}>{saving?'Saving…':'Save Changes'}</button><button className="btn btn-secondary btn-sm" onClick={()=>setEditing(false)}>Cancel</button></div>
+            </div>}
+          </div></div>
+          <div style={{display:'flex',flexDirection:'column',gap:'1rem'}}>
+            <div className="card"><div className="card-body">
+              <h3 style={{fontFamily:"'DM Serif Display',serif",marginBottom:'1rem',fontSize:'1rem'}}>Account Details</h3>
+              {[{l:'Role',v:user?.role},{l:'Member Since',v:'2026'},{l:'Status',v:'Active'}].map(i=><div key={i.l} style={{display:'flex',justifyContent:'space-between',padding:'7px 0',borderBottom:'1px solid var(--border)',fontSize:'.85rem'}}><span style={{color:'var(--text3)'}}>{i.l}</span><strong>{i.v}</strong></div>)}
+            </div></div>
+            <div className="card"><div className="card-body">
+              <h3 style={{fontFamily:"'DM Serif Display',serif",marginBottom:'1rem',fontSize:'1rem'}}>Quick Links</h3>
+              <div className="link-list">{links.map(l=><Link key={l.to} to={l.to} className="btn btn-secondary btn-sm">{l.l} →</Link>)}</div>
+            </div></div>
           </div>
-          <div>
-            <p className="eyebrow">{currentProfile.role} Profile</p>
-            <h1 id="profile-heading">{currentProfile.name}</h1>
-            <p>{currentProfile.email}</p>
-          </div>
-        </header>
-
-        {!isEditing ? (
-          <div className="profile-view">
-            <section className="profile-summary-grid" aria-label="Profile summary">
-              <article>
-                <span>Role</span>
-                <strong>{currentProfile.role}</strong>
-              </article>
-              <article>
-                <span>Profile</span>
-                <strong>{currentProfile.bio ? 'Complete' : 'Needs bio'}</strong>
-              </article>
-              <article>
-                <span>Subjects</span>
-                <strong>{subjects.length}</strong>
-              </article>
-            </section>
-
-            <section className="profile-section">
-              <div>
-                <p className="profile-label">Contact info</p>
-                <p className="profile-value">{currentProfile.email}</p>
-              </div>
-              <div>
-                <p className="profile-label">Bio</p>
-                <p className="profile-value">
-                  {currentProfile.bio || 'No bio added yet.'}
-                </p>
-              </div>
-            </section>
-
-            <section className="profile-section">
-              <p className="profile-label">Subjects</p>
-              {subjects.length > 0 ? (
-                <div className="subject-list">
-                  {subjects.map((subject) => (
-                    <span className="subject-chip" key={subject}>{subject}</span>
-                  ))}
-                </div>
-              ) : (
-                <p className="profile-value">
-                  {currentProfile.role === 'Tutor'
-                    ? 'No teaching subjects added yet.'
-                    : 'Subjects will appear here after bookings are added.'}
-                </p>
-              )}
-            </section>
-
-            {pageError && <p className="field-error">{pageError}</p>}
-
-            <button type="button" className="primary-button" onClick={startEditing}>
-              Edit Profile
-            </button>
-          </div>
-        ) : (
-          <form className="profile-form" onSubmit={handleSubmit}>
-            <div className="form-field">
-              <label htmlFor="name">Name</label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                minLength={2}
-                maxLength={255}
-                value={form.name}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="form-field">
-              <label htmlFor="bio">Bio</label>
-              <textarea
-                id="bio"
-                name="bio"
-                maxLength={1000}
-                rows={5}
-                value={form.bio}
-                onChange={handleChange}
-                placeholder="Share your teaching style, goals, or learning needs."
-              />
-            </div>
-
-            {currentProfile.role === 'Tutor' && (
-              <div className="form-field">
-                <label htmlFor="subject">Subjects</label>
-                <div className="subject-editor">
-                  <input
-                    id="subject"
-                    type="text"
-                    value={newSubject}
-                    onChange={(event) => setNewSubject(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        addSubject();
-                      }
-                    }}
-                    placeholder="Add a subject"
-                  />
-                  <button type="button" className="secondary-button" onClick={addSubject}>
-                    Add
-                  </button>
-                </div>
-
-                <div className="subject-list">
-                  {form.subjects.map((subject) => (
-                    <button
-                      type="button"
-                      className="subject-chip removable"
-                      key={subject}
-                      onClick={() => removeSubject(subject)}
-                    >
-                      {subject}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {pageError && <p className="field-error">{pageError}</p>}
-
-            <div className="profile-actions">
-              <button type="submit" className="primary-button" disabled={loading}>
-                {loading ? 'Saving...' : 'Save Changes'}
-              </button>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => setIsEditing(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-      </section>
-    </main>
+        </div>
+      </div>
+    </div>
   );
 }
