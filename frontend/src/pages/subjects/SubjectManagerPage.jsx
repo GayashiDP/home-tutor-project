@@ -1,11 +1,13 @@
 import {useState,useEffect} from 'react';import {useForm} from 'react-hook-form';import api from '../../services/api';
 const DEMO=[{id:'sub1',name:'Algebra',description:'Equations, functions, and problem-solving.',gradeLevel:'Grade 9-12'},{id:'sub2',name:'Calculus',description:'Derivatives, integrals and applications.',gradeLevel:'Grade 12 / University'},{id:'sub3',name:'Statistics',description:'Probability, data analysis and inference.',gradeLevel:'Grade 10-12'}];
 const GRADES=['Grade 1-5','Grade 6-8','Grade 9-11','Grade 12 / A-Level','University','All Levels'];
+const asSubjects=data=>Array.isArray(data)?data:Array.isArray(data?.subjects)?data.subjects:[];
+const asSubject=data=>data?.subject||data;
 export default function SubjectManagerPage(){
   const [subjects,setSubjects]=useState([]); const [loading,setLoading]=useState(true); const [del,setDel]=useState(null);
   const {register,handleSubmit,reset,formState:{isSubmitting}}=useForm();
-  useEffect(()=>{api.get('/subjects/my').then(r=>setSubjects(r.data)).catch(()=>setSubjects(DEMO)).finally(()=>setLoading(false));}, []);
-  const onAdd=async(data)=>{let ns;try{const r=await api.post('/subjects',data);ns=r.data;}catch{ns={id:`sub${Date.now()}`,...data};}setSubjects(s=>[...s,ns]);reset();};
+  useEffect(()=>{api.get('/subjects/my').then(r=>setSubjects(asSubjects(r.data))).catch(()=>setSubjects(DEMO)).finally(()=>setLoading(false));}, []);
+  const onAdd=async(data)=>{let ns;try{const r=await api.post('/subjects',data);ns=asSubject(r.data);}catch{ns={id:`sub${Date.now()}`,...data};}setSubjects(s=>[...asSubjects(s),ns]);reset();};
   const onDel=async()=>{try{await api.delete(`/subjects/${del.id}`);}catch{}setSubjects(s=>s.filter(x=>x.id!==del.id));setDel(null);};
   return(
     <div className="page">

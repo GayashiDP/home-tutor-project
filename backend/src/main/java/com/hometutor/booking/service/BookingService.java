@@ -192,6 +192,9 @@ public class BookingService {
     data.put("endTime", normalizeTime(session.endTime()));
     data.put("note", session.note() == null ? "" : session.note());
     data.put("reviewed", session.reviewed());
+    data.put("reviewAvailableAt", session.reviewAvailableAt() == null ? "" : session.reviewAvailableAt());
+    data.put("reviewWindowOpen", session.reviewWindowOpen());
+    data.put("canReview", "Student".equals(viewerRole) && session.canReview());
     return data;
   }
 

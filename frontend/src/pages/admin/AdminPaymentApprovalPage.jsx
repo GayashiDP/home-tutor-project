@@ -15,7 +15,11 @@ export default function AdminPaymentApprovalPage(){
   const [busyId,setBusyId]=useState(null);
   const [notice,setNotice]=useState('');
   const [preview,setPreview]=useState(null);
-  useEffect(()=>{api.get('/payments/approvals').then(r=>setPayments(normalize(r.data))).catch(()=>setPayments(DEMO)).finally(()=>setLoading(false));},[]);
+  const loadPayments=async()=>{
+    const r=await api.get('/payments/approvals');
+    setPayments(normalize(r.data));
+  };
+  useEffect(()=>{loadPayments().catch(()=>setPayments(DEMO)).finally(()=>setLoading(false));},[]);
   const viewSlip=async(payment)=>{
     try{
       const r=await api.get(`/payments/${payment.id}/slip`,{responseType:'blob'});
@@ -35,6 +39,7 @@ export default function AdminPaymentApprovalPage(){
     }catch(error){
       if(error.response){
         setNotice(error.response.data?.error||'Could not approve payment.');
+        loadPayments().catch(()=>{});
       }else{
         setPayments(p=>p.filter(x=>x.id!==payment.id));
         setNotice('Demo mode: payment approved.');
@@ -50,6 +55,7 @@ export default function AdminPaymentApprovalPage(){
     }catch(error){
       if(error.response){
         setNotice(error.response.data?.error||'Could not reject payment.');
+        loadPayments().catch(()=>{});
       }else{
         setPayments(p=>p.filter(x=>x.id!==payment.id));
         setNotice('Demo mode: payment rejected.');

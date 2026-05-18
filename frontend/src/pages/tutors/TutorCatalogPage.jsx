@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Stars from '../../components/common/Stars';
 import api from '../../services/api';
 
@@ -18,17 +18,31 @@ const normalizeTutorsResponse = data => {
   if (Array.isArray(data?.tutors)) return data.tutors;
   return DEMO;
 };
+const displayRating=tutor=>{
+  const rating=Number(tutor?.rating)||0;
+  return rating>0?rating.toFixed(1):'New';
+};
 
 export default function TutorCatalogPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tutors, setTutors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [subject, setSubject] = useState('');
+  const [subject, setSubject] = useState(searchParams.get('subject') || '');
 
   useEffect(() => {
     api.get('/tutors').then(r => setTutors(normalizeTutorsResponse(r.data))).catch(() => setTutors(DEMO)).finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setSubject(searchParams.get('subject') || '');
+  }, [searchParams]);
+
+  const changeSubject = value => {
+    setSubject(value);
+    setSearchParams(value ? { subject: value } : {});
+  };
 
   const allSubjects = [...new Set(tutors.flatMap(t => (t.subjects||[]).map(getSubjectName).filter(Boolean)))].sort();
   const filtered = tutors.filter(t => {
@@ -49,35 +63,43 @@ export default function TutorCatalogPage() {
           <span style={{fontSize:'1rem'}}>🔍</span>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name or keyword…"/>
           <div className="search-divider"/>
-          <select value={subject} onChange={e=>setSubject(e.target.value)}>
+          <select value={subject} onChange={e=>changeSubject(e.target.value)}>
             <option value="">All Subjects</option>
             {allSubjects.map(s=><option key={s} value={s}>{s}</option>)}
           </select>
-          {(search||subject)&&<button className="btn btn-secondary btn-sm" onClick={()=>{setSearch('');setSubject('');}}>Clear</button>}
+          {(search||subject)&&<button className="btn btn-secondary btn-sm" onClick={()=>{setSearch('');changeSubject('');}}>Clear</button>}
         </div>
         <p style={{color:'var(--text2)',fontSize:'.85rem',marginBottom:'1rem'}}>{loading?'Loading tutors…':`${filtered.length} tutor${filtered.length!==1?'s':''} found`}</p>
         {loading ? <div style={{textAlign:'center',padding:'3rem',color:'var(--text3)'}}>Loading tutors…</div>
         : filtered.length===0 ? <div className="card"><div className="empty-state"><h3>No tutors found</h3><p>Try a different search or clear filters.</p></div></div>
         : <div className="tutor-grid">
-          {filtered.map(t=>(
+          {filtered.map(t=>{
+            const rating=Number(t.rating)||0;
+            const reviewCount=Number(t.reviewCount)||0;
+            const latest=t.latestReview||{};
+            return (
             <div key={t.id} className="tutor-card" onClick={()=>navigate(`/tutors/${t.id}`)}>
               <div className="tutor-card-header">
                 <div className="tutor-avatar">{(t.name||'T').charAt(0)}</div>
                 <div style={{flex:1}}>
                   <h3>{t.name}</h3>
-                  <div className="tutor-rating"><Stars rating={t.rating||0} size={12}/><span style={{color:'var(--text2)'}}>{t.rating} ({t.reviewCount||0})</span></div>
+                  <div className="tutor-rating"><Stars rating={rating} size={12}/><span style={{color:'var(--text2)'}}>{displayRating(t)} ({reviewCount} review{reviewCount!==1?'s':''})</span></div>
                 </div>
               </div>
               <div className="tutor-card-body">
                 <p className="tutor-bio">{t.bio}</p>
                 <div className="subject-pills">{(t.subjects||[]).map(s=><span key={s.id||getSubjectName(s)} className="subject-pill">{getSubjectName(s)}</span>)}</div>
+                {latest.comment&&<div className="tutor-feedback">
+                  <div className="tutor-feedback-top"><Stars rating={Number(latest.rating)||rating} size={10}/><span>{latest.studentName||'Student'}</span></div>
+                  <p>{latest.comment}</p>
+                </div>}
               </div>
               <div className="tutor-card-footer">
                 <div className="hourly-rate">${t.hourly_rate} <span>/ hour</span></div>
                 <button className="btn btn-primary btn-sm" onClick={e=>{e.stopPropagation();navigate(`/tutors/${t.id}`);}}>View Profile</button>
               </div>
             </div>
-          ))}
+          );})}
         </div>}
       </div>
     </div>
