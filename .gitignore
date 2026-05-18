@@ -1,21 +1,32 @@
-# IDE related
+# Environment files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+
+# Backend build output
+backend/target/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
 .idea/
-*.iml
-out/
-gen/
 .vscode/
 
-# MacOS specific (වැදගත්ම එකක්)
-__MACOSX/
-.DS_Store
+# Java/Maven
+*.class
 
-# Build files (Java/Maven/Gradle)
-target/
-build/
-
-# Node modules
-node_modules/
-
-# Logs and temp files
-*.log
-.env
+# Temporary files
+*.tmp
+*.temp

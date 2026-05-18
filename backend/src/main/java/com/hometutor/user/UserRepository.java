@@ -88,9 +88,28 @@ public class UserRepository {
   public List<TutorRecord> findTutors(String name, String subject) {
     List<Object> params = new ArrayList<>();
     StringBuilder sql = new StringBuilder("""
-        SELECT DISTINCT u.id, u.name, u.email, u.role, u.bio, u.hourly_rate, COALESCE(u.status, 'Active') AS status
+        SELECT DISTINCT u.id, u.name, u.email, u.role, u.bio, u.hourly_rate, COALESCE(u.status, 'Active') AS status,
+               COALESCE(review_stats.rating, 0) AS rating,
+               COALESCE(review_stats.review_count, 0) AS review_count,
+               COALESCE(latest_review.student_name, '') AS latest_review_student_name,
+               COALESCE(latest_review.rating, 0) AS latest_review_rating,
+               COALESCE(latest_review.comment, '') AS latest_review_comment,
+               COALESCE(latest_review.created_at, '') AS latest_review_created_at
         FROM users u
         LEFT JOIN subjects s ON s.tutor_id = u.id AND s.is_active = TRUE
+        LEFT JOIN (
+          SELECT tutor_id, ROUND(AVG(rating)::numeric, 1) AS rating, COUNT(*) AS review_count
+          FROM reviews
+          GROUP BY tutor_id
+        ) review_stats ON review_stats.tutor_id = u.id
+        LEFT JOIN LATERAL (
+          SELECT reviewer.name AS student_name, r.rating, COALESCE(r.comment, '') AS comment, r.created_at::text AS created_at
+          FROM reviews r
+          JOIN users reviewer ON reviewer.id = r.student_id
+          WHERE r.tutor_id = u.id
+          ORDER BY r.created_at DESC
+          LIMIT 1
+        ) latest_review ON TRUE
         WHERE u.role = 'Tutor'
           AND COALESCE(u.status, 'Active') = 'Active'
         """);
@@ -116,7 +135,13 @@ public class UserRepository {
             rs.getString("role"),
             rs.getString("bio"),
             rs.getBigDecimal("hourly_rate"),
-            rs.getString("status")),
+            rs.getString("status"),
+            rs.getBigDecimal("rating"),
+            rs.getInt("review_count"),
+            rs.getString("latest_review_student_name"),
+            rs.getInt("latest_review_rating"),
+            rs.getString("latest_review_comment"),
+            rs.getString("latest_review_created_at")),
         params.toArray());
   }
 
@@ -131,13 +156,48 @@ public class UserRepository {
         (rs, rowNum) -> rs.getString("name"));
   }
 
+  public HomepageStatsRecord homepageStats() {
+    return jdbcTemplate.queryForObject(
+        """
+        SELECT
+          (SELECT COUNT(*) FROM users WHERE role = 'Student' AND COALESCE(status, 'Active') = 'Active') AS active_students,
+          (SELECT COUNT(*) FROM users WHERE role = 'Tutor' AND COALESCE(status, 'Active') = 'Active') AS expert_tutors,
+          (SELECT COUNT(DISTINCT LOWER(name)) FROM subjects WHERE is_active = TRUE) AS subjects_covered,
+          COALESCE(ROUND((SELECT AVG(rating)::numeric FROM reviews) / 5 * 100), 0) AS satisfaction_rate
+        """,
+        (rs, rowNum) -> new HomepageStatsRecord(
+            rs.getInt("active_students"),
+            rs.getInt("expert_tutors"),
+            rs.getInt("subjects_covered"),
+            rs.getInt("satisfaction_rate")));
+  }
+
   public Optional<TutorRecord> findTutorById(String id) {
     return jdbcTemplate.query(
         """
-        SELECT id, name, email, role, bio, hourly_rate, COALESCE(status, 'Active') AS status
-        FROM users
-        WHERE id = CAST(? AS uuid) AND role = 'Tutor'
-          AND COALESCE(status, 'Active') = 'Active'
+        SELECT u.id, u.name, u.email, u.role, u.bio, u.hourly_rate, COALESCE(u.status, 'Active') AS status,
+               COALESCE(review_stats.rating, 0) AS rating,
+               COALESCE(review_stats.review_count, 0) AS review_count,
+               COALESCE(latest_review.student_name, '') AS latest_review_student_name,
+               COALESCE(latest_review.rating, 0) AS latest_review_rating,
+               COALESCE(latest_review.comment, '') AS latest_review_comment,
+               COALESCE(latest_review.created_at, '') AS latest_review_created_at
+        FROM users u
+        LEFT JOIN (
+          SELECT tutor_id, ROUND(AVG(rating)::numeric, 1) AS rating, COUNT(*) AS review_count
+          FROM reviews
+          GROUP BY tutor_id
+        ) review_stats ON review_stats.tutor_id = u.id
+        LEFT JOIN LATERAL (
+          SELECT reviewer.name AS student_name, r.rating, COALESCE(r.comment, '') AS comment, r.created_at::text AS created_at
+          FROM reviews r
+          JOIN users reviewer ON reviewer.id = r.student_id
+          WHERE r.tutor_id = u.id
+          ORDER BY r.created_at DESC
+          LIMIT 1
+        ) latest_review ON TRUE
+        WHERE u.id = CAST(? AS uuid) AND u.role = 'Tutor'
+          AND COALESCE(u.status, 'Active') = 'Active'
         """,
         (rs, rowNum) -> new TutorRecord(
             rs.getString("id"),
@@ -146,7 +206,13 @@ public class UserRepository {
             rs.getString("role"),
             rs.getString("bio"),
             rs.getBigDecimal("hourly_rate"),
-            rs.getString("status")),
+            rs.getString("status"),
+            rs.getBigDecimal("rating"),
+            rs.getInt("review_count"),
+            rs.getString("latest_review_student_name"),
+            rs.getInt("latest_review_rating"),
+            rs.getString("latest_review_comment"),
+            rs.getString("latest_review_created_at")),
         id)
         .stream()
         .findFirst();
@@ -452,12 +518,12 @@ public class UserRepository {
                COALESCE(payment.status, '') AS payment_status,
                COALESCE(payment.slip_file_name, '') AS slip_file_name,
                other_user.name AS participant_name,
-               EXISTS (
-                 SELECT 1
-                 FROM reviews r
-                 WHERE r.booking_id = b.id
-                   AND r.student_id = b.student_id
-               ) AS reviewed
+               review_state.reviewed AS reviewed,
+               review_window.review_available_at::text AS review_available_at,
+               review_window.review_available_at <= CURRENT_TIMESTAMP AS review_window_open,
+               b.status IN ('Confirmed', 'Completed')
+                 AND review_window.review_available_at <= CURRENT_TIMESTAMP
+                 AND review_state.reviewed = FALSE AS can_review
         FROM bookings b
         LEFT JOIN availability_slots s ON s.id = b.slot_id
         JOIN users student_user ON student_user.id = b.student_id
@@ -469,6 +535,27 @@ public class UserRepository {
           ORDER BY p.created_at DESC
           LIMIT 1
         ) payment ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT EXISTS (
+            SELECT 1
+            FROM reviews r
+            WHERE r.booking_id = b.id
+              AND r.student_id = b.student_id
+          ) AS reviewed
+        ) review_state ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT COALESCE(
+            (
+              SELECT ls.scheduled_end
+              FROM live_sessions ls
+              WHERE ls.booking_id = b.id
+                AND ls.status <> 'Cancelled'
+              ORDER BY ls.updated_at DESC
+              LIMIT 1
+            ),
+            (b.session_date::timestamp + COALESCE(s.end_time, TIME '23:59:59')) AT TIME ZONE 'Asia/Colombo'
+          ) AS review_available_at
+        ) review_window ON TRUE
         %s
         WHERE %s = CAST(? AS uuid)
         ORDER BY b.session_date DESC, s.start_time DESC NULLS LAST
@@ -499,12 +586,12 @@ public class UserRepository {
                COALESCE(payment.status, '') AS payment_status,
                COALESCE(payment.slip_file_name, '') AS slip_file_name,
                other_user.name AS participant_name,
-               EXISTS (
-                 SELECT 1
-                 FROM reviews r
-                 WHERE r.booking_id = b.id
-                   AND r.student_id = b.student_id
-               ) AS reviewed
+               review_state.reviewed AS reviewed,
+               review_window.review_available_at::text AS review_available_at,
+               review_window.review_available_at <= CURRENT_TIMESTAMP AS review_window_open,
+               b.status IN ('Confirmed', 'Completed')
+                 AND review_window.review_available_at <= CURRENT_TIMESTAMP
+                 AND review_state.reviewed = FALSE AS can_review
         FROM bookings b
         LEFT JOIN availability_slots s ON s.id = b.slot_id
         JOIN users student_user ON student_user.id = b.student_id
@@ -516,6 +603,27 @@ public class UserRepository {
           ORDER BY p.created_at DESC
           LIMIT 1
         ) payment ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT EXISTS (
+            SELECT 1
+            FROM reviews r
+            WHERE r.booking_id = b.id
+              AND r.student_id = b.student_id
+          ) AS reviewed
+        ) review_state ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT COALESCE(
+            (
+              SELECT ls.scheduled_end
+              FROM live_sessions ls
+              WHERE ls.booking_id = b.id
+                AND ls.status <> 'Cancelled'
+              ORDER BY ls.updated_at DESC
+              LIMIT 1
+            ),
+            (b.session_date::timestamp + COALESCE(s.end_time, TIME '23:59:59')) AT TIME ZONE 'Asia/Colombo'
+          ) AS review_available_at
+        ) review_window ON TRUE
         %s
         WHERE b.id = CAST(? AS uuid)
           AND %s = CAST(? AS uuid)
@@ -807,6 +915,66 @@ public class UserRepository {
         studentId);
   }
 
+  public Optional<ReceiptDownloadRecord> findReceiptForStudent(String studentId, String receiptOrPaymentId) {
+    boolean uuid = isUuid(receiptOrPaymentId);
+    String idPredicate = uuid
+        ? "AND (r.id = CAST(? AS uuid) OR p.id = CAST(? AS uuid) OR r.receipt_no = ? OR p.receipt_no = ?)"
+        : "AND (r.receipt_no = ? OR p.receipt_no = ?)";
+    Object[] params = uuid
+        ? new Object[] {studentId, receiptOrPaymentId, receiptOrPaymentId, receiptOrPaymentId, receiptOrPaymentId}
+        : new Object[] {studentId, receiptOrPaymentId, receiptOrPaymentId};
+
+    return jdbcTemplate.query(
+        """
+        SELECT r.id::text AS receipt_id,
+               r.receipt_no,
+               r.amount,
+               r.issued_at::text,
+               p.id::text AS payment_id,
+               p.status AS payment_status,
+               p.paid_at::text AS paid_at,
+               b.subject,
+               b.session_date::text,
+               COALESCE(s.start_time::text, '') AS start_time,
+               COALESCE(s.end_time::text, '') AS end_time,
+               student_user.name AS student_name,
+               tutor_user.name AS tutor_name
+        FROM receipts r
+        JOIN payments p ON p.id = r.payment_id
+        JOIN bookings b ON b.id = r.booking_id
+        JOIN users student_user ON student_user.id = p.student_id
+        JOIN users tutor_user ON tutor_user.id = b.tutor_id
+        LEFT JOIN availability_slots s ON s.id = b.slot_id
+        WHERE p.student_id = CAST(? AS uuid)
+        """ + idPredicate,
+        (rs, rowNum) -> new ReceiptDownloadRecord(
+            rs.getString("receipt_id"),
+            rs.getString("receipt_no"),
+            rs.getBigDecimal("amount"),
+            rs.getString("issued_at"),
+            rs.getString("payment_id"),
+            rs.getString("payment_status"),
+            rs.getString("paid_at"),
+            rs.getString("subject"),
+            rs.getString("session_date"),
+            rs.getString("start_time"),
+            rs.getString("end_time"),
+            rs.getString("student_name"),
+            rs.getString("tutor_name")),
+        params)
+        .stream()
+        .findFirst();
+  }
+
+  private boolean isUuid(String value) {
+    try {
+      UUID.fromString(value);
+      return true;
+    } catch (IllegalArgumentException exception) {
+      return false;
+    }
+  }
+
   public List<PaymentApprovalRecord> findPendingSlipPaymentsForAdmin() {
     return jdbcTemplate.query(
         """
@@ -1029,6 +1197,192 @@ public class UserRepository {
         .findFirst();
   }
 
+
+  public List<LiveSessionRecord> findLiveSessionsByUser(String userId, String role) {
+    String userColumn = "Tutor".equals(role) ? "ls.tutor_id" : "ls.student_id";
+    return jdbcTemplate.query(
+        """
+        SELECT ls.id::text, ls.booking_id::text, ls.student_id::text, student_user.name AS student_name,
+               ls.tutor_id::text, tutor_user.name AS tutor_name, COALESCE(b.subject, '') AS subject,
+               ls.title, COALESCE(ls.description, '') AS description, ls.platform, ls.meeting_link,
+               ls.scheduled_start, ls.scheduled_end, ls.status,
+               ls.created_at, ls.updated_at
+        FROM live_sessions ls
+        JOIN bookings b ON b.id = ls.booking_id
+        JOIN users student_user ON student_user.id = ls.student_id
+        JOIN users tutor_user ON tutor_user.id = ls.tutor_id
+        WHERE %s = CAST(? AS uuid)
+        ORDER BY ls.scheduled_start ASC
+        """.formatted(userColumn),
+        this::mapLiveSessionRecord,
+        userId);
+  }
+
+  public Optional<LiveSessionRecord> findLiveSessionForBookingForUser(String userId, String role, String bookingId) {
+    String userColumn = "Tutor".equals(role) ? "ls.tutor_id" : "ls.student_id";
+    return jdbcTemplate.query(
+        """
+        SELECT ls.id::text, ls.booking_id::text, ls.student_id::text, student_user.name AS student_name,
+               ls.tutor_id::text, tutor_user.name AS tutor_name, COALESCE(b.subject, '') AS subject,
+               ls.title, COALESCE(ls.description, '') AS description, ls.platform, ls.meeting_link,
+               ls.scheduled_start, ls.scheduled_end, ls.status,
+               ls.created_at, ls.updated_at
+        FROM live_sessions ls
+        JOIN bookings b ON b.id = ls.booking_id
+        JOIN users student_user ON student_user.id = ls.student_id
+        JOIN users tutor_user ON tutor_user.id = ls.tutor_id
+        WHERE ls.booking_id = CAST(? AS uuid)
+          AND %s = CAST(? AS uuid)
+        """.formatted(userColumn),
+        this::mapLiveSessionRecord,
+        bookingId,
+        userId)
+        .stream()
+        .findFirst();
+  }
+
+  public Optional<LiveSessionRecord> findLiveSessionByIdForUser(String userId, String role, String liveSessionId) {
+    String userColumn = "Tutor".equals(role) ? "ls.tutor_id" : "ls.student_id";
+    return jdbcTemplate.query(
+        """
+        SELECT ls.id::text, ls.booking_id::text, ls.student_id::text, student_user.name AS student_name,
+               ls.tutor_id::text, tutor_user.name AS tutor_name, COALESCE(b.subject, '') AS subject,
+               ls.title, COALESCE(ls.description, '') AS description, ls.platform, ls.meeting_link,
+               ls.scheduled_start, ls.scheduled_end, ls.status,
+               ls.created_at, ls.updated_at
+        FROM live_sessions ls
+        JOIN bookings b ON b.id = ls.booking_id
+        JOIN users student_user ON student_user.id = ls.student_id
+        JOIN users tutor_user ON tutor_user.id = ls.tutor_id
+        WHERE ls.id = CAST(? AS uuid)
+          AND %s = CAST(? AS uuid)
+        """.formatted(userColumn),
+        this::mapLiveSessionRecord,
+        liveSessionId,
+        userId)
+        .stream()
+        .findFirst();
+  }
+
+  public LiveSessionRecord upsertLiveSession(
+      String bookingId,
+      String tutorId,
+      String studentId,
+      String title,
+      String description,
+      String platform,
+      String meetingLink,
+      String scheduledStart,
+      String scheduledEnd) {
+    return jdbcTemplate.queryForObject(
+        """
+        WITH saved_live_session AS (
+        INSERT INTO live_sessions (
+          id, booking_id, tutor_id, student_id, title, description, platform, meeting_link,
+          scheduled_start, scheduled_end, status, created_at, updated_at
+        )
+        VALUES (
+          gen_random_uuid(), CAST(? AS uuid), CAST(? AS uuid), CAST(? AS uuid), ?, ?, ?, ?,
+          CAST(? AS timestamptz), CAST(? AS timestamptz), 'Scheduled', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (booking_id)
+        DO UPDATE SET
+          title = EXCLUDED.title,
+          description = EXCLUDED.description,
+          platform = EXCLUDED.platform,
+          meeting_link = EXCLUDED.meeting_link,
+          scheduled_start = EXCLUDED.scheduled_start,
+          scheduled_end = EXCLUDED.scheduled_end,
+          status = 'Scheduled',
+          updated_at = CURRENT_TIMESTAMP
+        RETURNING *
+        )
+        SELECT ls.id::text, ls.booking_id::text, ls.student_id::text, student_user.name AS student_name,
+               ls.tutor_id::text, tutor_user.name AS tutor_name, COALESCE(b.subject, '') AS subject,
+               ls.title, COALESCE(ls.description, '') AS description, ls.platform, ls.meeting_link,
+               ls.scheduled_start, ls.scheduled_end, ls.status,
+               ls.created_at, ls.updated_at
+        FROM saved_live_session ls
+        JOIN bookings b ON b.id = ls.booking_id
+        JOIN users student_user ON student_user.id = ls.student_id
+        JOIN users tutor_user ON tutor_user.id = ls.tutor_id
+        """,
+        this::mapLiveSessionRecord,
+        bookingId,
+        tutorId,
+        studentId,
+        title,
+        description,
+        platform,
+        meetingLink,
+        scheduledStart,
+        scheduledEnd);
+  }
+
+  public boolean updateLiveSessionStatusForTutor(String liveSessionId, String tutorId, String status) {
+    int rows = jdbcTemplate.update(
+        """
+        UPDATE live_sessions
+        SET status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = CAST(? AS uuid)
+          AND tutor_id = CAST(? AS uuid)
+        """,
+        status,
+        liveSessionId,
+        tutorId);
+    return rows > 0;
+  }
+
+  public boolean hasLiveSessionOverlapForTutor(
+      String tutorId,
+      String scheduledStart,
+      String scheduledEnd,
+      String excludeLiveSessionId) {
+    String exclude = excludeLiveSessionId == null || excludeLiveSessionId.isBlank()
+        ? ""
+        : " AND id <> CAST(? AS uuid)";
+    Object[] params = exclude.isBlank()
+        ? new Object[] { tutorId, scheduledEnd, scheduledStart }
+        : new Object[] { tutorId, scheduledEnd, scheduledStart, excludeLiveSessionId };
+    Integer count = jdbcTemplate.queryForObject(
+        ("""
+        SELECT COUNT(*)
+        FROM live_sessions
+        WHERE tutor_id = CAST(? AS uuid)
+          AND status IN ('Scheduled', 'Live')
+          AND scheduled_start < CAST(? AS timestamptz)
+          AND scheduled_end > CAST(? AS timestamptz)
+        """ + exclude),
+        Integer.class,
+        params);
+    return count != null && count > 0;
+  }
+
+  public boolean hasLiveSessionOverlapForStudent(
+      String studentId,
+      String scheduledStart,
+      String scheduledEnd,
+      String excludeLiveSessionId) {
+    String exclude = excludeLiveSessionId == null || excludeLiveSessionId.isBlank()
+        ? ""
+        : " AND id <> CAST(? AS uuid)";
+    Object[] params = exclude.isBlank()
+        ? new Object[] { studentId, scheduledEnd, scheduledStart }
+        : new Object[] { studentId, scheduledEnd, scheduledStart, excludeLiveSessionId };
+    Integer count = jdbcTemplate.queryForObject(
+        ("""
+        SELECT COUNT(*)
+        FROM live_sessions
+        WHERE student_id = CAST(? AS uuid)
+          AND status IN ('Scheduled', 'Live')
+          AND scheduled_start < CAST(? AS timestamptz)
+          AND scheduled_end > CAST(? AS timestamptz)
+        """ + exclude),
+        Integer.class,
+        params);
+    return count != null && count > 0;
+  }
+
   public boolean updateTutorStatus(String tutorId, String status) {
     int rows = jdbcTemplate.update(
         """
@@ -1040,6 +1394,27 @@ public class UserRepository {
         status,
         tutorId);
     return rows > 0;
+  }
+
+
+  private LiveSessionRecord mapLiveSessionRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+    return new LiveSessionRecord(
+        rs.getString("id"),
+        rs.getString("booking_id"),
+        rs.getString("student_id"),
+        rs.getString("student_name"),
+        rs.getString("tutor_id"),
+        rs.getString("tutor_name"),
+        rs.getString("subject"),
+        rs.getString("title"),
+        rs.getString("description"),
+        rs.getString("platform"),
+        rs.getString("meeting_link"),
+        rs.getObject("scheduled_start", java.time.OffsetDateTime.class).toString(),
+        rs.getObject("scheduled_end", java.time.OffsetDateTime.class).toString(),
+        rs.getString("status"),
+        rs.getObject("created_at", java.time.OffsetDateTime.class).toString(),
+        rs.getObject("updated_at", java.time.OffsetDateTime.class).toString());
   }
 
   private SessionRecord mapSessionRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
@@ -1062,7 +1437,10 @@ public class UserRepository {
         rs.getString("start_time"),
         rs.getString("end_time"),
         rs.getString("note"),
-        rs.getBoolean("reviewed"));
+        rs.getBoolean("reviewed"),
+        rs.getString("review_available_at"),
+        rs.getBoolean("review_window_open"),
+        rs.getBoolean("can_review"));
   }
 
   private ReviewRecord mapReviewRecord(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
@@ -1165,7 +1543,13 @@ public class UserRepository {
       String role,
       String bio,
       java.math.BigDecimal hourlyRate,
-      String status) {
+      String status,
+      java.math.BigDecimal rating,
+      int reviewCount,
+      String latestReviewStudentName,
+      int latestReviewRating,
+      String latestReviewComment,
+      String latestReviewCreatedAt) {
   }
 
   public record SubjectRecord(String id, String name, String description, String gradeLevel) {
@@ -1208,7 +1592,10 @@ public class UserRepository {
       String startTime,
       String endTime,
       String note,
-      boolean reviewed) {
+      boolean reviewed,
+      String reviewAvailableAt,
+      boolean reviewWindowOpen,
+      boolean canReview) {
   }
 
   public record ReviewRecord(
@@ -1264,6 +1651,22 @@ public class UserRepository {
       String issuedAt) {
   }
 
+  public record ReceiptDownloadRecord(
+      String receiptId,
+      String receiptNo,
+      java.math.BigDecimal amount,
+      String issuedAt,
+      String paymentId,
+      String paymentStatus,
+      String paidAt,
+      String subject,
+      String sessionDate,
+      String startTime,
+      String endTime,
+      String studentName,
+      String tutorName) {
+  }
+
   public record PaymentApprovalRecord(
       String id,
       String bookingId,
@@ -1291,6 +1694,26 @@ public class UserRepository {
       byte[] data) {
   }
 
+
+  public record LiveSessionRecord(
+      String id,
+      String bookingId,
+      String studentId,
+      String studentName,
+      String tutorId,
+      String tutorName,
+      String subject,
+      String title,
+      String description,
+      String platform,
+      String meetingLink,
+      String scheduledStart,
+      String scheduledEnd,
+      String status,
+      String createdAt,
+      String updatedAt) {
+  }
+
   public record AdminStudentRecord(
       String id,
       String name,
@@ -1316,5 +1739,12 @@ public class UserRepository {
       int sessionCount,
       int completedSessions,
       java.math.BigDecimal totalEarned) {
+  }
+
+  public record HomepageStatsRecord(
+      int activeStudents,
+      int expertTutors,
+      int subjectsCovered,
+      int satisfactionRate) {
   }
 }

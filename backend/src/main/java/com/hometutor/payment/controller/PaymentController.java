@@ -2,6 +2,7 @@ package com.hometutor.payment.controller;
 
 import com.hometutor.auth.service.AuthService;
 import com.hometutor.payment.service.PaymentService;
+import com.hometutor.payment.service.PaymentService.ReceiptFile;
 import com.hometutor.user.UserRepository.PaymentSlipRecord;
 import java.util.Map;
 import org.springframework.http.HttpHeaders;
@@ -33,6 +34,18 @@ public class PaymentController {
       @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
     String userId = authService.requireUserId(authorizationHeader);
     return ResponseEntity.ok(paymentService.getPaymentHistory(userId));
+  }
+
+  @GetMapping("/receipt/{receiptOrPaymentId}")
+  public ResponseEntity<byte[]> receipt(
+      @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+      @PathVariable String receiptOrPaymentId) {
+    String userId = authService.requireUserId(authorizationHeader);
+    ReceiptFile receipt = paymentService.downloadReceipt(userId, receiptOrPaymentId);
+    return ResponseEntity.ok()
+        .contentType(MediaType.APPLICATION_PDF)
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + receipt.fileName().replace("\"", "") + "\"")
+        .body(receipt.data());
   }
 
   @PostMapping("/slips/{bookingId}")

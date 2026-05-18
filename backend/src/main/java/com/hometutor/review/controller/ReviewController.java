@@ -27,7 +27,6 @@ public class ReviewController {
     this.reviewService = reviewService;
   }
 
-  // ResponseEntity method 
   @PostMapping
   public ResponseEntity<Map<String, Object>> createReview(
       @RequestHeader(value = "Authorization", required = false) String authorizationHeader,

@@ -11,6 +11,7 @@ import com.hometutor.booking.exception.BookingCancellationException;
 import com.hometutor.booking.exception.BookingNotFoundException;
 import com.hometutor.booking.exception.SlotUnavailableException;
 import com.hometutor.booking.exception.StudentOnlyBookingException;
+import com.hometutor.live.exception.LiveSessionException;
 import com.hometutor.payment.exception.PaymentFailedException;
 import com.hometutor.profile.exception.ProfileNotFoundException;
 import com.hometutor.review.exception.DuplicateReviewException;
@@ -140,6 +141,12 @@ public class ApiExceptionHandler {
   @ExceptionHandler(PaymentFailedException.class)
   public ResponseEntity<Map<String, String>> handlePaymentFailed(PaymentFailedException exception) {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        .body(Map.of("error", exception.getMessage()));
+  }
+
+  @ExceptionHandler(LiveSessionException.class)
+  public ResponseEntity<Map<String, String>> handleLiveSessionException(LiveSessionException exception) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
         .body(Map.of("error", exception.getMessage()));
   }
 

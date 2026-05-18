@@ -1,16 +1,15 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../services/api';
 
-const subjects = [
+const FALLBACK_SUBJECTS = [
   'Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'Computer Science',
   'History', 'Economics', 'Art', 'Music', 'French', 'Coding'
 ];
 
-const stats = [
-  { icon: '👥', value: '10K+', label: 'Active students', tone: 'bg-cool' },
-  { icon: '🎓', value: '2K+', label: 'Expert tutors', tone: 'bg-mint' },
-  { icon: '📚', value: '50+', label: 'Subjects covered', tone: 'bg-warm' },
-  { icon: '🏆', value: '98%', label: 'Satisfaction rate', tone: 'bg-soft' },
-];
+const numberFormatter = new Intl.NumberFormat();
+const formatCount = value => numberFormatter.format(Number(value) || 0);
+const subjectUrl = subject => `/tutors?subject=${encodeURIComponent(subject)}`;
 
 const steps = [
   { icon: '🔎', title: 'Search & compare', desc: 'Browse verified tutors by subject, rate, profile details, reviews, and available lesson slots.' },
@@ -19,6 +18,25 @@ const steps = [
 ];
 
 export default function HomePage() {
+  const [summary, setSummary] = useState(null);
+  const [loadingSummary, setLoadingSummary] = useState(true);
+
+  useEffect(() => {
+    api.get('/home/summary')
+      .then(r => setSummary(r.data))
+      .catch(() => setSummary({ stats: null, subjects: FALLBACK_SUBJECTS }))
+      .finally(() => setLoadingSummary(false));
+  }, []);
+
+  const data = summary?.stats || {};
+  const subjects = Array.isArray(summary?.subjects) ? summary.subjects : FALLBACK_SUBJECTS;
+  const stats = [
+    { icon: '👥', value: loadingSummary ? '…' : formatCount(data.activeStudents), label: 'Active students', tone: 'bg-cool' },
+    { icon: '🎓', value: loadingSummary ? '…' : formatCount(data.expertTutors), label: 'Expert tutors', tone: 'bg-mint' },
+    { icon: '📚', value: loadingSummary ? '…' : formatCount(data.subjectsCovered ?? subjects.length), label: 'Subjects covered', tone: 'bg-warm' },
+    { icon: '🏆', value: loadingSummary ? '…' : `${Number(data.satisfactionRate) || 0}%`, label: 'Satisfaction rate', tone: 'bg-soft' },
+  ];
+
   return (
     <div className="page home-page">
       <section className="home-hero-design">
@@ -69,7 +87,7 @@ export default function HomePage() {
           </div>
           <div className="home-subject-grid">
             {subjects.map((subject) => (
-              <Link key={subject} to="/tutors" className="home-subject-card">
+              <Link key={subject} to={subjectUrl(subject)} className="home-subject-card">
                 <div className="home-subject-icon">📘</div>
                 <div className="home-subject-name">{subject}</div>
               </Link>

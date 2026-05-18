@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AvailabilityService {
-  // Standard time format used for availability slots
   private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
   private final UserRepository userRepository;
@@ -30,13 +29,11 @@ public class AvailabilityService {
     this.userRepository = userRepository;
   }
 
-  // Returns availability of the logged-in tutor
   public Map<String, Object> getMyAvailability(String userId) {
     UserRecord tutor = requireTutor(userId);
     return Map.of("slots", slots(tutor.id()));
   }
 
-  // Returns availability of a selected tutor
   public Map<String, Object> getTutorAvailability(String tutorId) {
     if (userRepository.findTutorById(tutorId).isEmpty()) {
       throw new TutorNotFoundException();
@@ -45,7 +42,6 @@ public class AvailabilityService {
     return Map.of("slots", slots(tutorId));
   }
 
-  // Saves tutor availability slots
   public Map<String, Object> saveMyAvailability(String userId, SaveAvailabilityRequest request) {
     UserRecord tutor = requireTutor(userId);
     List<AvailabilitySlotRecord> slots = request.getSlots().stream()
@@ -57,7 +53,6 @@ public class AvailabilityService {
     return Map.of("message", "Availability saved successfully", "slots", slots(tutor.id()));
   }
 
-  // Updates one availability slot of the tutor
   public Map<String, Object> updateMyAvailabilitySlot(
       String userId,
       String slotId,
@@ -66,18 +61,14 @@ public class AvailabilityService {
     AvailabilitySlotRecord currentSlot = userRepository.findAvailabilitySlotForTutor(tutor.id(), slotId)
         .orElseThrow(AvailabilitySlotNotFoundException::new);
     AvailabilitySlotRecord nextSlot = toRecord(request);
-
-    // Checks whether slot date or time has changed
     boolean timingChanged = !currentSlot.dayOfWeek().equals(nextSlot.dayOfWeek())
         || !normalizeTime(currentSlot.startTime()).equals(nextSlot.startTime())
         || !normalizeTime(currentSlot.endTime()).equals(nextSlot.endTime());
 
-    // Prevents changes if the slot already has a confirmed booking
     if ((timingChanged || "cancelled".equals(nextSlot.status())) && userRepository.hasConfirmedBookingForSlot(slotId)) {
       throw new ConfirmedBookingConflictException();
     }
 
-    // Prevents availability overlap with confirmed bookings
     if ("available".equals(nextSlot.status())
         && userRepository.hasConfirmedBookingOverlap(
             tutor.id(),
@@ -97,8 +88,6 @@ public class AvailabilityService {
         nextSlot.status());
 
     int notificationsSent = 0;
-
-    // Notifies students if pending booking slot time changed or was cancelled
     if (timingChanged || "cancelled".equals(nextSlot.status())) {
       notificationsSent = userRepository.notifyPendingBookingStudentsForSlot(
           slotId,
@@ -112,7 +101,6 @@ public class AvailabilityService {
         "pendingBookings", userRepository.countPendingBookingsForSlot(slotId));
   }
 
-  // Ensures the user is a valid active tutor
   private UserRecord requireTutor(String userId) {
     UserRecord user = userRepository.findById(userId)
         .orElseThrow(TutorOnlySubjectException::new);
@@ -128,7 +116,6 @@ public class AvailabilityService {
     return user;
   }
 
-  // Gets tutor slots and marks booked slots correctly
   private List<Map<String, Object>> slots(String tutorId) {
     Set<String> bookedSlotIds = new HashSet<>(userRepository.findBookedSlotIdsByTutorId(tutorId));
     return userRepository.findAvailabilityByTutorId(tutorId).stream()
@@ -136,12 +123,10 @@ public class AvailabilityService {
         .toList();
   }
 
-  // Converts save request slot into database record format
   private AvailabilitySlotRecord toRecord(AvailabilitySlotRequest slot) {
     LocalTime start = LocalTime.parse(slot.getStartTime());
     LocalTime end = LocalTime.parse(slot.getEndTime());
 
-    // End time must be later than start time
     if (!end.isAfter(start)) {
       throw new IllegalArgumentException("End time must be after start time");
     }
@@ -154,12 +139,10 @@ public class AvailabilityService {
         "available");
   }
 
-  // Converts update request slot into database record format
   private AvailabilitySlotRecord toRecord(UpdateAvailabilitySlotRequest slot) {
     LocalTime start = LocalTime.parse(slot.getStartTime());
     LocalTime end = LocalTime.parse(slot.getEndTime());
 
-    // End time must be later than start time
     if (!end.isAfter(start)) {
       throw new IllegalArgumentException("End time must be after start time");
     }
@@ -168,7 +151,6 @@ public class AvailabilityService {
         ? "available"
         : slot.getStatus().trim().toLowerCase();
 
-    // Only valid availability statuses are allowed
     if (!List.of("available", "cancelled").contains(status)) {
       throw new IllegalArgumentException("Availability status must be available or cancelled");
     }
@@ -181,10 +163,7 @@ public class AvailabilityService {
         status);
   }
 
-  // Converts slot record into API response format
   private Map<String, Object> toMap(AvailabilitySlotRecord slot, Set<String> bookedSlotIds) {
-     
-    // Override status to "booked" if slot is already reserved
     String status = bookedSlotIds.contains(slot.id())
         ? "booked"
         : slot.status() == null ? "available" : slot.status();
@@ -197,7 +176,6 @@ public class AvailabilityService {
         "status", status);
   }
 
-  // Converts time into HH:mm format
   private String normalizeTime(String value) {
     return LocalTime.parse(value).format(TIME_FORMAT);
   }

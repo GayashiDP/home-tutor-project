@@ -1,76 +1,71 @@
-<div align="center">
+# Home Tutor System
 
-# 🎓 Home Tutor System
+A full-stack tutoring marketplace for students, tutors, and administrators. The application supports tutor discovery, booking management, manual payment approval, live lesson scheduling, receipts, and post-lesson reviews.
 
-**A full-stack tutoring platform connecting students with qualified tutors in Sri Lanka**
+![React](https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-5.x-646CFF?logo=vite&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-6DB33F?logo=springboot&logoColor=white)
+![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?logo=postgresql&logoColor=white)
 
-[![React](https://img.shields.io/badge/React-18.2.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.2.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://supabase.com/)
-[![License](https://img.shields.io/badge/License-Academic-yellow?style=for-the-badge)](#-license)
+## Overview
 
-[🚀 Live Demo](#) • [🐛 Report Bug](../../issues) • [💡 Request Feature](../../issues)
+Home Tutor System is built for a complete tutoring workflow:
 
-</div>
+- Students browse tutors, filter by subject, book lessons, upload payment slips, join live classes, and leave reviews after lessons end.
+- Tutors manage subjects, availability, lesson prices, confirmed bookings, and live meeting links.
+- Admins manage tutor status, approve or reject payment slips, issue receipts, and moderate reviews.
 
----
+The frontend is a React single-page app. The backend is a Spring Boot REST API backed by PostgreSQL/Supabase.
 
-## 📌 Overview
+## Key Features
 
-**Home Tutor System** is a full-stack platform that bridges the gap between students and verified tutors. Students can discover tutors, book sessions, and manage payments — while tutors control their schedule, subjects, and pricing. Admins keep the platform running smoothly.
+| Area | Capability |
+| --- | --- |
+| Authentication | JWT login, student/tutor registration, seeded admin account, role-based route protection |
+| Tutor browsing | Public tutor catalog, subject filters, ratings, review counts, latest feedback snippets |
+| Homepage data | Live counts for active students, expert tutors, subjects covered, and satisfaction rate |
+| Bookings | Student booking requests, tutor pricing, cancellation handling, booking status tracking |
+| Payments | Student payment slip upload, admin approval/rejection, receipt generation and download |
+| Live lessons | Tutor-created meeting links for confirmed bookings, schedule conflict checks, join window control |
+| Reviews | One review per student booking, available only after the scheduled lesson end time |
+| Administration | Tutor suspension/reactivation, payment approval queue, review moderation |
+| Database support | Supabase/PostgreSQL schema repair on startup for operational columns and indexes |
 
-> 3 Roles Supported &nbsp;•&nbsp; Secure JWT Auth &nbsp;•&nbsp; Manual Payment Verification &nbsp;•&nbsp; Light / Dark Theme
+## Tech Stack
 
----
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 18, Vite 5, React Router 6, React Hook Form, Axios |
+| Styling | Custom CSS, responsive layout, light/dark theme support |
+| Backend | Java 17, Spring Boot 3.3.5, Spring Web, Spring JDBC, Bean Validation |
+| Auth | JWT with `jjwt`, BCrypt password hashing |
+| Database | PostgreSQL, Supabase-compatible connection settings |
+| Tooling | npm, Maven |
 
-## ✨ Features
+## Project Structure
 
-| Feature | Description |
-|---|---|
-| 🔐 **Role-Based Auth** | Separate dashboards for Student, Tutor, and Admin |
-| 👩‍🎓 **Student Dashboard** | Browse tutors, book sessions, upload payment slips, leave reviews |
-| 👨‍🏫 **Tutor Dashboard** | Manage subjects, availability slots, bookings, and session prices |
-| 🛡️ **Admin Panel** | User management, payment approval, and review moderation |
-| 💳 **Payment Workflow** | Manual bank slip upload → Admin verify → Receipt issued |
-| ⭐ **Review System** | Students review tutors after completed sessions |
-| 🌗 **Light / Dark Theme** | Fully themed responsive UI |
-| ⚡ **Fast & Modern** | Vite-powered frontend with instant HMR |
-
----
-
-## 🛠️ Tech Stack
-
-```
-Frontend     → React 18 + Vite 5 + React Router v6 + React Hook Form
-Styling      → Tailwind CSS 3 + Custom CSS (light/dark theme)
-Backend      → Java 17 + Spring Boot 3.3.5 + Spring JDBC + Spring Web
-Auth         → JWT (jjwt 0.12.6) + BCrypt password hashing
-Database     → PostgreSQL / Supabase
-Build Tools  → npm + Maven 3.9+
-```
-
----
-
-## 📁 Project Structure
-
-```
+```text
 .
 ├── README.md
-├── package.json                   # Root scripts
+├── package.json
+├── LIVE_SESSION_INTEGRATION.md
 ├── backend/
 │   ├── pom.xml
-│   ├── .env                       # Backend env vars (not committed)
+│   ├── package.json
+│   ├── .env
 │   └── src/main/
 │       ├── resources/
 │       │   └── application.properties
 │       └── java/com/hometutor/
 │           ├── HomeTutorApplication.java
-│           ├── auth/
 │           ├── admin/
+│           ├── auth/
 │           ├── availability/
 │           ├── booking/
 │           ├── config/
+│           ├── home/
+│           ├── live/
 │           ├── payment/
 │           ├── profile/
 │           ├── review/
@@ -81,7 +76,7 @@ Build Tools  → npm + Maven 3.9+
 └── frontend/
     ├── package.json
     ├── vite.config.js
-    ├── .env                        # Frontend env vars (not committed)
+    ├── .env
     └── src/
         ├── App.jsx
         ├── components/
@@ -92,251 +87,416 @@ Build Tools  → npm + Maven 3.9+
         └── utils/
 ```
 
----
+## Prerequisites
 
-## 🚀 Getting Started
+- Java 17
+- Maven 3.9 or newer
+- Node.js 18 or newer
+- npm 9 or newer
+- PostgreSQL database, or a Supabase project with direct database credentials
 
-### Prerequisites
-
-- **Java 17** ([download](https://adoptium.net/))
-- **Maven 3.9+** ([download](https://maven.apache.org/))
-- **Node.js 18+** ([download](https://nodejs.org/))
-- A PostgreSQL database or a [Supabase](https://supabase.com/) project (free tier works!)
-
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/your-username/home-tutor-system.git
-cd home-tutor-system
-```
-
-### 2. Install frontend dependencies
-
-```bash
-cd frontend
-npm install
-```
-
-### 3. Set up environment variables
+## Environment Configuration
 
 Create `backend/.env`:
 
 ```env
-PORT=5001
+PORT=5002
 
-DB_HOST=localhost
+DB_HOST=your-supabase-db-host
 DB_PORT=5432
 DB_NAME=postgres
 DB_USER=postgres
-DB_PASSWORD=your_database_password
-DB_SSL_MODE=disable
+DB_PASSWORD=your-database-password
+DB_SSL_MODE=require
 
-JWT_SECRET=replace-this-with-a-long-random-secret
+DB_POOL_MAX_SIZE=2
+DB_POOL_MIN_IDLE=0
+DB_CONNECTION_TIMEOUT_MS=10000
+DB_IDLE_TIMEOUT_MS=30000
+DB_MAX_LIFETIME_MS=300000
+
+JWT_SECRET=replace-this-with-a-long-random-production-secret
 JWT_EXPIRATION_MS=86400000
 
 ADMIN_EMAIL=admin@hometutor.lk
-ADMIN_PASSWORD=admin12345
+ADMIN_PASSWORD=change-this-password
 ADMIN_NAME=Admin User
 ```
 
 Create `frontend/.env`:
 
 ```env
-VITE_API_URL=http://localhost:5001/api
+VITE_API_URL=http://localhost:5002/api
 ```
 
-> 💡 Using Supabase? Set your Supabase DB credentials and change `DB_SSL_MODE=require`
+Notes:
 
-### 4. Start the development servers
+- The backend default port is `5001`, but this workspace is configured to use `5002`.
+- If you change `PORT`, update `VITE_API_URL` to match.
+- Use `DB_SSL_MODE=require` for Supabase.
+- Use `DB_SSL_MODE=disable` only for a local PostgreSQL instance without SSL.
+- Do not commit real `.env` values.
 
-Open two terminals:
+## Database
 
-**Terminal 1 — Backend:**
+The backend expects the main application tables to exist in PostgreSQL/Supabase:
+
+- `users`
+- `subjects`
+- `availability_slots`
+- `bookings`
+- `payments`
+- `receipts`
+- `live_sessions`
+- `reviews`
+- `notifications`
+- `audit_logs`
+
+On startup, `SchemaInitializer` also applies safe compatibility updates, including:
+
+- user status support
+- session price support
+- payment slip storage columns
+- payment approval columns
+- live session table/columns/check constraints
+- live session time indexes
+- unique review-per-booking/student index
+
+This allows the app to work with the current Supabase schema while still repairing missing operational columns needed by the latest code.
+
+## Installation
+
+Install frontend dependencies:
+
+```bash
+npm --prefix frontend install
+```
+
+The backend dependencies are resolved by Maven when the backend is built or started.
+
+## Running Locally
+
+Start the backend from the project root:
+
+```bash
+PORT=5002 mvn -f backend/pom.xml spring-boot:run
+```
+
+Backend health checks:
+
+```text
+http://localhost:5002/health
+http://localhost:5002/api/health
+```
+
+Start the frontend in another terminal:
+
+```bash
+npm --prefix frontend run dev
+```
+
+Frontend URL:
+
+```text
+http://localhost:5173
+```
+
+You can also use the root scripts:
+
 ```bash
 npm run dev:backend
-# or: cd backend && mvn spring-boot:run
-```
-API runs at: **http://localhost:5001** &nbsp;|&nbsp; Health check: **http://localhost:5001/api/health**
-
-**Terminal 2 — Frontend:**
-```bash
 npm run dev:frontend
-# or: cd frontend && npm run dev
 ```
-App runs at: **http://localhost:5173** 🎉
 
----
+If you use `npm run dev:backend`, make sure `PORT=5002` is set in `backend/.env` or your shell.
 
-## 📜 Available Scripts
+## Makefile Shortcuts
 
-**From the project root:**
+The project includes a root `Makefile` for common development commands:
+
 ```bash
-npm run dev:frontend     # Start Vite dev server
-npm run dev:backend      # Start Spring Boot
-npm run build            # Build frontend + run backend Maven tests
-npm run build:frontend   # Build frontend only
-npm run test:backend     # Run backend Maven tests
+make help          # Show all available commands
+make env           # Create .env files from .env.example when missing
+make setup         # Create env files and install dependencies
+make install       # Install frontend packages and resolve backend dependencies
+make doctor        # Show Node, npm, Java, and Maven versions
+make frontend      # Run only the React/Vite frontend
+make backend       # Run only the Spring Boot backend on PORT=5002
+make dev           # Run frontend and backend together
+make both          # Alias for make dev
+make preview       # Preview the built frontend
+make build         # Build frontend and run backend tests
+make check         # Alias for make build
+make health        # Check the backend health endpoint
+make stop-backend  # Stop the process listening on the backend port
+make clean         # Remove frontend dist, backend target, and .DS_Store files
+make clean-deps    # Remove frontend/node_modules
+make clean-all     # Remove generated files and frontend/node_modules
+make clear         # Alias for make clean-all
+make push-ready    # Verify, clean generated files, and show git status
+make status        # Show git status if this folder is a git repository
 ```
 
-**From `frontend/`:**
+You can override ports when needed:
+
 ```bash
-npm run dev       # Start dev server
-npm run build     # Production build
-npm run preview   # Preview production build
+make backend PORT=5003
+make frontend FRONTEND_PORT=5174
+make dev PORT=5003 FRONTEND_PORT=5174
 ```
 
-**From `backend/`:**
+`make push-ready` runs the build checks first, then removes generated files and `frontend/node_modules`. It does not delete local `.env` files, and `.gitignore` prevents those secrets from being committed.
+
+## Build and Verification
+
+Run the frontend production build:
+
 ```bash
-mvn spring-boot:run    # Start the API
-mvn test               # Run unit tests
-mvn clean package      # Build the JAR
+npm --prefix frontend run build
 ```
 
----
+Compile and test the backend:
 
-## 🗺️ Routes
+```bash
+mvn -f backend/pom.xml test
+```
 
-### Frontend
+Run both from the root package script:
 
-| Path | Access |
-|---|---|
-| `/` | Public |
-| `/login` | Public |
-| `/signup` | Public |
-| `/tutors` | Students only |
-| `/tutors/:id` | Students only |
-| `/dashboard` | Authenticated users |
-| `/sessions` | Students & Tutors |
-| `/profile` | Authenticated users |
-| `/transactions` | Students |
-| `/tutor/availability` | Tutors only |
-| `/tutor/subjects` | Tutors only |
-| `/admin/users` | Admins only |
-| `/admin/payments` | Admins only |
-| `/admin/reviews` | Admins only |
+```bash
+npm run build
+```
 
-### Backend API
+Important: there is no root Maven `pom.xml`. Run Maven with `-f backend/pom.xml` from the project root, or run Maven commands inside the `backend/` directory.
 
-**Base URL:** `http://localhost:5001/api`
+## Frontend Routes
 
-> All protected endpoints require: `Authorization: Bearer <token>`
+| Route | Access | Purpose |
+| --- | --- | --- |
+| `/` | Public | Homepage with live platform statistics and subject entry points |
+| `/login` | Public | User login |
+| `/signup` | Public | Student/tutor registration |
+| `/tutors` | Public/student flow | Browse tutors and filter by subject |
+| `/tutors/:id` | Public/student flow | Tutor profile, availability, and booking form |
+| `/dashboard` | Authenticated | Role-based dashboard |
+| `/sessions` | Student, Tutor | Bookings, payments, live lessons, reviews |
+| `/profile` | Authenticated | Profile details and tutor subject summary |
+| `/transactions` | Student | Payment history and receipts |
+| `/tutor/availability` | Tutor | Manage weekly availability |
+| `/tutor/subjects` | Tutor | Manage tutor subjects |
+| `/admin/users` | Admin | Tutor account management |
+| `/admin/payments` | Admin | Payment approval queue |
+| `/admin/reviews` | Admin | Review moderation |
 
-| Method | Endpoint | Description |
-|---|---|---|
+## API Reference
+
+All protected endpoints require:
+
+```http
+Authorization: Bearer <jwt-token>
+```
+
+Base URL in local development:
+
+```text
+http://localhost:5002/api
+```
+
+Endpoint paths below are relative to `/api`, except the root health check which is shown as a full URL.
+
+### Public and Auth
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `http://localhost:5002/health` or `/health` | Server health check |
+| `GET` | `/home/summary` | Homepage statistics and active subjects |
 | `POST` | `/auth/register` | Register a student or tutor |
-| `POST` | `/auth/login` | Sign in and receive a JWT |
-| `GET` | `/profile` | Get current user profile |
-| `PATCH` | `/profile` | Update current user profile |
-| `GET` | `/tutors` | List active tutors |
+| `POST` | `/auth/login` | Login and receive user data/JWT |
+| `POST` | `/auth/logout` | Logout response endpoint |
+| `GET` | `/tutors?name=&subject=` | List active tutors, optionally filtered |
 | `GET` | `/tutors/{id}` | Get tutor details |
-| `GET/POST` | `/subjects/my` | Get or add tutor subjects |
-| `DELETE` | `/subjects/{id}` | Remove tutor subject |
-| `GET/POST` | `/availability/mine` | Get or save tutor availability |
 | `GET` | `/availability/tutors/{tutorId}` | Get public tutor availability |
-| `POST` | `/bookings` | Create a booking |
-| `GET` | `/bookings/my` | Get current user's bookings |
+| `GET` | `/reviews/tutors/{tutorId}` | Get public tutor reviews |
+
+### Profile and Tutor Tools
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/profile` | Current user profile |
+| `PATCH` | `/profile` | Update current user profile |
+| `GET` | `/subjects/my` | Tutor subject list |
+| `POST` | `/subjects` | Create tutor subject |
+| `DELETE` | `/subjects/{id}` | Remove tutor subject |
+| `GET` | `/availability/my` | Tutor availability slots |
+| `POST` | `/availability/my` | Create tutor availability slot |
+| `PATCH` | `/availability/my/{slotId}` | Update tutor availability slot |
+
+### Bookings, Payments, and Receipts
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/bookings` | Student creates a booking request |
+| `GET` | `/bookings/my` | Current user's bookings |
+| `GET` | `/bookings/{bookingId}` | Booking details |
 | `PATCH` | `/bookings/{bookingId}/cancel` | Cancel a booking |
 | `PATCH` | `/bookings/{bookingId}/price` | Tutor sets session price |
-| `POST` | `/payments/slips/{bookingId}` | Upload a payment slip |
+| `POST` | `/payments/slips/{bookingId}` | Student uploads payment slip |
 | `GET` | `/payments/history` | Student payment history |
+| `GET` | `/payments/receipt/{receiptOrPaymentId}` | Download receipt |
 | `GET` | `/payments/approvals` | Admin payment approval list |
 | `PATCH` | `/payments/{paymentId}/approve` | Admin approves payment |
 | `PATCH` | `/payments/{paymentId}/reject` | Admin rejects payment |
-| `POST` | `/reviews` | Submit a review |
-| `GET` | `/reviews` | Admin: list all reviews |
-| `DELETE` | `/reviews/{reviewId}` | Admin: delete a review |
-| `GET` | `/admin/users` | Admin user summaries |
+| `GET` | `/payments/{paymentId}/slip` | Admin downloads uploaded slip |
+
+### Live Sessions
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/live-sessions/my` | Current user's live sessions |
+| `GET` | `/live-sessions/booking/{bookingId}` | Live session attached to a booking |
+| `POST` | `/live-sessions` | Tutor creates or updates a live session |
+| `PATCH` | `/live-sessions/{liveSessionId}/cancel` | Tutor cancels a live session |
+| `PATCH` | `/live-sessions/{liveSessionId}/complete` | Tutor marks a live session complete |
+
+### Reviews and Admin
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `POST` | `/reviews` | Student submits a lesson review |
+| `GET` | `/reviews` | Admin lists all reviews |
+| `DELETE` | `/reviews/{reviewId}` | Admin deletes a review |
+| `GET` | `/admin/users` | Admin user dashboard data |
 | `PATCH` | `/admin/tutors/{tutorId}/suspend` | Suspend a tutor |
 | `PATCH` | `/admin/tutors/{tutorId}/activate` | Reactivate a tutor |
 
----
+## Core Business Rules
 
-## 💳 Payment Slip Workflow
+### Booking and Payment
 
-```
-Student books a session
-        ↓
-Tutor sets the session price
-        ↓
-Student uploads a bank/payment slip
-        ↓
-  Status → PendingApproval
-        ↓
-Admin reviews the slip
-        ↓
-  Approved ✅            Rejected ❌
-      ↓
-Appears in transaction history & admin summaries
-```
+1. A student creates a booking request from a tutor's profile.
+2. The tutor sets the session price.
+3. The student uploads a payment slip.
+4. The admin approves or rejects the payment.
+5. Approval confirms the booking and enables live lesson scheduling.
+6. A receipt is issued after approval.
 
-> No card payment gateway — all payments are manual bank transfers verified by the admin.
+### Live Lessons
 
----
+- Only tutors can create or update live sessions.
+- Live sessions can be scheduled only for confirmed bookings.
+- Meeting links must start with `http://` or `https://`.
+- Session end time must be after start time.
+- Live sessions must be at least 15 minutes and no longer than 4 hours.
+- Past start times are rejected.
+- Tutor and student schedule overlaps are rejected.
+- Students can only see/join the meeting link when the join window opens.
 
-## 👥 Roles
+### Reviews
 
-| Role | Capabilities |
-|---|---|
-| 👩‍🎓 `Student` | Browse tutors, book sessions, upload payment slips, leave reviews |
-| 👨‍🏫 `Tutor` | Manage profile, subjects, availability, bookings, session prices |
-| 🛡️ `Admin` | Manage all users, approve/reject payments, moderate reviews |
+- Only students can leave reviews.
+- A review is allowed only after the scheduled lesson end time.
+- Each student can review a booking only once.
+- Browse Tutors shows real ratings, review counts, and latest feedback from the database.
 
----
+## Common Troubleshooting
 
-## 🌐 Deployment
+### `mvn clean install` says there is no POM
 
-### Vercel (Frontend — Recommended)
+You are running Maven from the project root. Use:
 
 ```bash
-cd frontend && npm run build
-# Deploy the dist/ folder to Vercel
+mvn -f backend/pom.xml clean install
 ```
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
+or:
 
-### Netlify (Frontend)
+```bash
+cd backend
+mvn clean install
+```
 
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start)
+### Frontend shows `ERR_CONNECTION_REFUSED`
 
-> ⚠️ Remember to add your `VITE_API_URL` environment variable in the deployment platform's settings!
+The backend is not running on the URL configured in `frontend/.env`.
 
----
+Check:
 
-## 🤝 Contributing
+```bash
+lsof -nP -iTCP:5002 -sTCP:LISTEN
+curl http://localhost:5002/api/health
+```
 
-1. Fork the repo
-2. Create your feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+Then start the backend:
 
----
+```bash
+PORT=5002 mvn -f backend/pom.xml spring-boot:run
+```
 
-## 🔒 Security Notes
+### Backend says port `5002` is already in use
 
-- **Never commit `.env` files** — add them to `.gitignore`
-- **Never commit** `node_modules/`, `dist/`, or `backend/target/`
-- Use a strong, random `JWT_SECRET` in production
-- Keep all database credentials in environment variables only
+Find and stop the process:
 
----
+```bash
+lsof -nP -iTCP:5002 -sTCP:LISTEN
+kill <PID>
+```
 
-## 👥 Team
+Then restart the backend.
 
-**Home Tutor System Development Team**
+### `POST /api/auth/register` returns `400`
 
-> Built with ❤️ for students and tutors across Sri Lanka
+The registration request is invalid. The backend requires:
 
----
+- `fullName`
+- `email`
+- `password`
+- `confirmPassword`
+- `role` as `Student` or `Tutor`
 
-## 📄 License
+The frontend signup form includes the confirm password field and displays the backend validation message.
 
-This project is for **academic and learning purposes**. Add a `LICENSE` file before publishing if you plan to distribute it publicly.
+### `POST /api/live-sessions` returns `409`
 
----
+The request conflicts with live session rules. Common causes:
 
-<div align="center">
+- booking is not confirmed
+- start time is in the past
+- meeting link is invalid
+- session overlaps another tutor live lesson
+- session overlaps another student live lesson
 
-**⭐ Star this repo if you found it useful!**
+The scheduler modal displays the exact backend message.
 
-</div>
+### `subjects.map is not a function`
+
+The subject manager must read `subjects` from the API response wrapper:
+
+```json
+{ "subjects": [] }
+```
+
+The current frontend normalizes that shape before rendering.
+
+## Development Notes
+
+- Frontend API calls are centralized in `frontend/src/services/api.js`.
+- Auth state is managed in `frontend/src/contexts/AuthContext.jsx`.
+- Backend data access is centralized in `backend/src/main/java/com/hometutor/user/UserRepository.java`.
+- Cross-origin requests are allowed for local Vite ports matching `localhost:517*` and `127.0.0.1:517*`.
+- Admin user creation is handled by `AdminUserSeeder` when admin environment variables are provided.
+- Schema compatibility updates run on startup through `SchemaInitializer`.
+
+## Production Checklist
+
+- Use a strong `JWT_SECRET`.
+- Change the default admin password.
+- Store environment variables outside source control.
+- Restrict CORS origins to production domains.
+- Use HTTPS for frontend, backend, and meeting links.
+- Keep Supabase credentials private.
+- Run frontend build and backend tests before deployment.
+- Review database backup and retention policies.
+
+## License
+
+Academic project. Update this section if a formal license is required.

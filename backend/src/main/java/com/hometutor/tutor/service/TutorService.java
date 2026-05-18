@@ -43,8 +43,9 @@ public class TutorService {
         "role", tutor.role(),
         "bio", tutor.bio() == null ? "" : tutor.bio(),
         "hourly_rate", hourlyRate(tutor.hourlyRate()),
-        "rating", 0,
-        "reviewCount", 0,
+        "rating", rating(tutor.rating()),
+        "reviewCount", tutor.reviewCount(),
+        "latestReview", latestReview(tutor),
         "subjects", subjectNames(tutor.id()));
   }
 
@@ -56,8 +57,9 @@ public class TutorService {
         "role", tutor.role(),
         "bio", tutor.bio() == null ? "" : tutor.bio(),
         "hourly_rate", hourlyRate(tutor.hourlyRate()),
-        "rating", 0,
-        "reviewCount", 0,
+        "rating", rating(tutor.rating()),
+        "reviewCount", tutor.reviewCount(),
+        "latestReview", latestReview(tutor),
         "subjects", subjects(tutor.id()));
   }
 
@@ -83,5 +85,21 @@ public class TutorService {
 
   private BigDecimal hourlyRate(BigDecimal hourlyRate) {
     return hourlyRate == null ? BigDecimal.ZERO : hourlyRate;
+  }
+
+  private BigDecimal rating(BigDecimal rating) {
+    return rating == null ? BigDecimal.ZERO : rating;
+  }
+
+  private Map<String, Object> latestReview(TutorRecord tutor) {
+    if (tutor.reviewCount() <= 0) {
+      return Map.of();
+    }
+
+    return Map.of(
+        "studentName", tutor.latestReviewStudentName() == null ? "" : tutor.latestReviewStudentName(),
+        "rating", tutor.latestReviewRating(),
+        "comment", tutor.latestReviewComment() == null ? "" : tutor.latestReviewComment(),
+        "createdAt", tutor.latestReviewCreatedAt() == null ? "" : tutor.latestReviewCreatedAt());
   }
 }
