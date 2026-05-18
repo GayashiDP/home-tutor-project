@@ -1,8 +1,8 @@
-package com.hometutor.review.service;
+package com.hometutor.review.service; // Define the package for this service class
 
-import com.hometutor.booking.exception.BookingNotFoundException;
-import com.hometutor.review.dto.CreateReviewRequest;
-import com.hometutor.review.exception.DuplicateReviewException;
+import com.hometutor.booking.exception.BookingNotFoundException;// Exception thrown when a booking is not found
+import com.hometutor.review.dto.CreateReviewRequest;// DTO carrying the review creation payload
+import com.hometutor.review.exception.DuplicateReviewException;// Exception for duplicate review attempts
 import com.hometutor.review.exception.ReviewNotFoundException;
 import com.hometutor.review.exception.ReviewNotAllowedException;
 import com.hometutor.tutor.exception.TutorNotFoundException;
@@ -18,7 +18,7 @@ import java.util.Map;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+// Registers this class as a Spring service component
 @Service
 public class ReviewService {
   private final UserRepository userRepository;
@@ -26,7 +26,7 @@ public class ReviewService {
   public ReviewService(UserRepository userRepository) {
     this.userRepository = userRepository;
   }
-
+// Returns all reviews for a given tutor along with computed stats (average rating and count)
   public Map<String, Object> createReview(String userId, CreateReviewRequest request) {
     UserRecord user = userRepository.findById(userId)
         .orElseThrow(BookingNotFoundException::new);
@@ -104,13 +104,13 @@ public class ReviewService {
         "reviewId", review.id(),
         "tutorId", review.tutorId());
   }
-
+// Shared guard: throws if the given user is not an Admin
   private void requireAdmin(UserRecord user) {
     if (!"Admin".equals(user.role())) {
       throw new ReviewNotAllowedException("Only admins can manage reviews");
     }
   }
-
+// Converts a ReviewRecord (DB projection) into an ordered map suitable for JSON serialisation
   private Map<String, Object> toMap(ReviewRecord review) {
     Map<String, Object> data = new LinkedHashMap<>();
     data.put("id", review.id());
